@@ -1,4 +1,4 @@
-package cmd
+package chatcmd
 
 import (
 	"github.com/mslacken/kowalski/internal/app/chat"
@@ -9,13 +9,10 @@ import (
 // chatCmd represents the chat command
 var chatCmd = &cobra.Command{
 	Use:   "chat",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Ask kowalski what to change",
+	Long: `iStart a chat with Kowalski, you helpfull penguin.
+He has access to knowledge bases and can access your files
+for better answers.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		modelname, _ := cmd.PersistentFlags().GetString("model")
 		llm := ollamaconnector.Ollama{
@@ -30,5 +27,8 @@ to quickly create a Cobra application.`,
 
 func init() {
 	chatCmd.PersistentFlags().StringP("model", "m", "llama3.1", "model name")
-	rootCmd.AddCommand(chatCmd)
+}
+
+func GetCommand() *cobra.Command {
+	return chatCmd
 }
