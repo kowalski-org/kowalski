@@ -31,11 +31,3 @@ func WithFile(filename string) KnowledgeArgs {
 	}
 
 }
-
-type Information struct {
-	OS           string
-	Title        string
-	Sections     []string
-	EmbeddingVec []float64
-	Content      string
-}

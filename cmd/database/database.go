@@ -2,8 +2,10 @@ package databasecmd
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/mslacken/kowalski/internal/pkg/database"
+	"github.com/mslacken/kowalski/internal/pkg/docbook"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +16,7 @@ var databaseCmd = &cobra.Command{
 	Long: `List, create databse from sources or
 permanenetly remove databases.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("database called")
+		cmd.Usage()
 	},
 }
 
@@ -22,22 +24,44 @@ var databaseAdd = &cobra.Command{
 	Use:        "add DATABASE FILE(s)",
 	ArgAliases: []string{"create", "ad", "new"},
 	Short:      "Add document(s) to the given database",
-	Long: `Add a document to the given database and create embeddings for it.
-If a directory is given all documents in the directory are added.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Long: `Add a document extracted from a file
+to the given database and create embeddings for it.`,
+	Args: cobra.MinimumNArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		entities, err := cmd.PersistentFlags().GetStringArray("entity")
+		if err != nil {
+			return err
+		}
+		entitiesMap := make(map[string]string)
+		for _, ent := range entities {
+			entMap, err := docbook.ReadEntity(ent)
+			if err != nil {
+				return err
+			}
+			maps.Copy(entitiesMap, entMap)
+		}
 		db := database.New()
-		db.AddInformation("test",
-			database.Information{
-				OS:      "linux",
-				Title:   "Test doc",
-				Content: "This is a a simple test",
-			},
-		)
+		for i := range args[1:] {
+			bk := docbook.Docbook{
+				Entities: entitiesMap,
+			}
+			info, err := bk.ParseDocBook(args[i+1])
+			fmt.Printf(info.Render())
+			if err != nil {
+				return err
+			}
+			err = db.AddInformation(args[0], info)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
 	},
 }
 
 func init() {
 	databaseCmd.AddCommand(databaseAdd)
+	databaseAdd.PersistentFlags().StringArray("entity", []string{}, "filename of an xml entity defintions")
 }
 func GetCommand() *cobra.Command {
 	return databaseCmd
