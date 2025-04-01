@@ -1,7 +1,7 @@
 package database
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/mslacken/kowalski/internal/pkg/docbook"
 	"github.com/mslacken/kowalski/internal/pkg/information"
@@ -23,12 +23,16 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 			return err
 		}
 	}
-	if err != nil {
-		return err
+	info.CreateHash()
+	qr := kn.db.Query(collection).Where(clover.Field("Hash").Eq(info.Hash))
+	docs, _ := qr.FindAll()
+	if len(docs) == 0 {
+		doc := clover.NewDocumentOf(info)
+		docId, _ := kn.db.InsertOne(collection, doc)
+		log.Printf("Added id: %s sum: %s\n", docId, info.Hash)
+	} else {
+		log.Printf("Found document: %s\n", docs[0].ObjectId())
 	}
-	doc := clover.NewDocumentOf(info)
-	docId, _ := kn.db.InsertOne(collection, doc)
-	fmt.Printf("Add doc: %s\n", docId)
 	return nil
 
 }

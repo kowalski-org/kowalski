@@ -2,6 +2,8 @@ package information
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"fmt"
 	"html/template"
 	"log"
 	"reflect"
@@ -19,8 +21,17 @@ const defaultTemplate = `
 `
 
 type Information struct {
-	OS []string
+	OS   []string
+	Hash string
 	Section
+}
+
+func (info *Information) CreateHash() []byte {
+	str := info.Render()
+	h := sha256.New()
+	h.Write([]byte(str))
+	info.Hash = fmt.Sprintf("%x", h.Sum(nil))
+	return h.Sum(nil)
 }
 
 type Section struct {
@@ -64,20 +75,6 @@ func (info *Section) RenderSubsections() (ret string) {
 	}
 	return
 }
-
-// func (info *Section) ToText() (text string) {
-// 	if info.Title != "" {
-// 		text += info.Title
-// 	}
-// 	text += info.Text
-// 	for _, sec := range info.SubSections {
-// 		text += sec.ToText()
-// 	}
-// 	for _, it := range info.Items {
-// 		text += "* " + it
-// 	}
-// 	return
-// }
 
 func Flatten(info any) {
 	typ := reflect.TypeOf(info)

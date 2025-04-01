@@ -1,7 +1,6 @@
 package databasecmd
 
 import (
-	"fmt"
 	"maps"
 
 	"github.com/mslacken/kowalski/internal/pkg/database"
@@ -46,10 +45,6 @@ to the given database and create embeddings for it.`,
 				Entities: entitiesMap,
 			}
 			info, err := bk.ParseDocBook(args[i+1])
-			fmt.Printf(info.Render())
-			if err != nil {
-				return err
-			}
 			err = db.AddInformation(args[0], info)
 			if err != nil {
 				return err

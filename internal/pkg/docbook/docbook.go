@@ -2,15 +2,16 @@ package docbook
 
 import (
 	"bufio"
-	"dario.cat/mergo"
 	"fmt"
-	"github.com/beevik/etree"
-	"github.com/mslacken/kowalski/internal/pkg/information"
-	"gopkg.in/yaml.v3"
 	"html"
+	"log"
 	"os"
 	"regexp"
 	"strings"
+
+	"dario.cat/mergo"
+	"github.com/beevik/etree"
+	"github.com/mslacken/kowalski/internal/pkg/information"
 )
 
 type Docbook struct {
@@ -32,32 +33,20 @@ func (bk *Docbook) ParseDocBook(filename string) (info information.Information, 
 	}
 	root := doc.SelectElement("article")
 	for _, section := range root.SelectElements("section") {
-		fmt.Printf("%s\n", section.Tag)
-		for _, attr := range section.Attr {
-			fmt.Printf("  ATTR: %s=%s\n", attr.Key, attr.Value)
-		}
 		subsec := parseElement(section)
 		info.SubSections = append(info.SubSections, &subsec)
 		if subsec.Title == "Environment" {
 			info.OS = append(info.OS, subsec.Items...)
 		}
 	}
-	fmt.Printf("Parsing xml file: %s\n", filename)
-	information.Flatten(info)
-	yml, _ := yaml.Marshal(info)
-	fmt.Printf("Info: %s", yml)
+	log.Printf("Parsing xml file: %s\n", filename)
 	return
 }
 
 func parseElement(elem *etree.Element) (info information.Section) {
 	{
 		str := strings.TrimSpace(strings.ReplaceAll(html.UnescapeString(elem.Text()), "\n", ""))
-		// switch elem.Tag {
-		// case "title", "Title":
-		// info.Title = str
-		// default:
 		info.Text = str
-		// }
 	}
 	for _, child := range elem.ChildElements() {
 		subinfo := parseElement(child)
