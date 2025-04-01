@@ -1,6 +1,7 @@
 package databasecmd
 
 import (
+	"fmt"
 	"maps"
 
 	"github.com/mslacken/kowalski/internal/pkg/database"
@@ -54,8 +55,38 @@ to the given database and create embeddings for it.`,
 	},
 }
 
+var databaseList = &cobra.Command{
+	Use:        "list DATABASE [queries]",
+	ArgAliases: []string{"ls"},
+	Short:      "List (all) documents in the database",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		db := database.New()
+		if len(args) == 0 {
+			if colls, err := db.ListCollections(); err != nil {
+				return err
+			} else {
+				fmt.Printf("Collections:\n")
+				for _, col := range colls {
+					fmt.Printf("%s\n", col)
+				}
+			}
+		} else {
+			if docs, err := db.List(args[0]); err != nil {
+				return err
+			} else {
+				fmt.Printf("Documents:\n")
+				for _, doc := range docs {
+					fmt.Printf("%s\n", doc)
+				}
+			}
+		}
+		return nil
+	},
+}
+
 func init() {
 	databaseCmd.AddCommand(databaseAdd)
+	databaseCmd.AddCommand(databaseList)
 	databaseAdd.PersistentFlags().StringArray("entity", []string{}, "filename of an xml entity defintions")
 }
 func GetCommand() *cobra.Command {
