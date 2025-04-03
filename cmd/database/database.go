@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 
+	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
 	"github.com/mslacken/kowalski/internal/pkg/database"
 	"github.com/mslacken/kowalski/internal/pkg/docbook"
 	"github.com/spf13/cobra"
@@ -84,9 +85,26 @@ var databaseList = &cobra.Command{
 	},
 }
 
+var databaseCheck = &cobra.Command{
+	Use:        "check db for question",
+	ArgAliases: []string{"chk"},
+	Short:      "Check if database has a entry near the question",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		req := ollamaconnector.OllamaEmbedding{}
+		embedding, err := req.GetEmbeddings(args)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Check %v\n", embedding)
+		return nil
+	},
+	Args: cobra.MinimumNArgs(1),
+}
+
 func init() {
 	databaseCmd.AddCommand(databaseAdd)
 	databaseCmd.AddCommand(databaseList)
+	databaseCmd.AddCommand(databaseCheck)
 	databaseAdd.PersistentFlags().StringArray("entity", []string{}, "filename of an xml entity defintions")
 }
 func GetCommand() *cobra.Command {
