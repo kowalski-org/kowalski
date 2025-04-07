@@ -2,10 +2,13 @@ package database
 
 import (
 	"log"
+	"math/rand"
 
+	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
 	"github.com/mslacken/kowalski/internal/pkg/docbook"
 	"github.com/mslacken/kowalski/internal/pkg/information"
-	"github.com/ostafen/clover"
+	"github.com/ostafen/clover/v2/document"
+	"github.com/ostafen/clover/v2/query"
 )
 
 func (kn *Knowledge) AddFile(collection string, fileName string) (err error) {
@@ -24,15 +27,62 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 		}
 	}
 	info.CreateHash()
-	qr := kn.db.Query(collection).Where(clover.Field("Hash").Eq(info.Hash))
-	docs, _ := qr.FindAll()
+	// qr := kn.db.Query(collection).Where(clover.Field("Hash").Eq(info.Hash))
+	// docs, _ := qr.FindAll()
+
+	docs, _ := kn.db.FindAll(query.NewQuery(collection).Where(query.Field("Hash").Eq(info.Hash)))
 	if len(docs) == 0 {
-		doc := clover.NewDocumentOf(info)
+		info.CreateEmbedding()
+		doc := document.NewDocumentOf(info)
 		docId, _ := kn.db.InsertOne(collection, doc)
-		log.Printf("Added id: %s sum: %s\n", docId, info.Hash)
+		/* Do not add to faiss right now, as the index isn't stored
+		err := kn.faissIndex.Add(info.EmbeddingVec)
+		if err != nil {
+			return err
+		} */
+		log.Printf("Added '%s' with id: %s sum: %s\n", info.Title, docId, info.Hash)
+
 	} else {
-		log.Printf("Found document: %s\n", docs[0].ObjectId())
+		log.Printf("Found document '%s': %s %s\n", info.Title, docs[0].ObjectId(), info.Hash)
 	}
 	return nil
 
+}
+
+func (kn *Knowledge) GetInfos(collection, question string) (documents []information.Information, err error) {
+	kn.CreateIndex(collection)
+	emb, err := ollamaconnector.OllamaChat().GetEmbeddings([]string{question})
+	if err != nil {
+		return nil, err
+	}
+	lengthVec, indexVec, err := kn.faissIndex.Search(emb.Embeddings[0], 5)
+	if err != nil {
+		return nil, err
+	}
+	for i, indx := range indexVec {
+		if indx >= 0 && indx < int64(len(kn.faissId)) {
+			dbdoc, err := kn.db.FindById(collection, kn.faissId[indx])
+			if err != nil {
+				return nil, err
+			}
+			var info information.Information
+			err = dbdoc.Unmarshal(&info)
+			if err != nil {
+				return nil, err
+			}
+			info.Dist = lengthVec[i]
+			documents = append(documents, info)
+		}
+	}
+	return
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }

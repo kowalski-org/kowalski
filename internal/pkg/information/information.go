@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
 )
 
 const defaultTemplate = `
@@ -23,21 +24,14 @@ const defaultTemplate = `
 type Information struct {
 	OS   []string
 	Hash string
+	Dist float32
 	Section
-}
-
-func (info *Information) CreateHash() []byte {
-	str := info.Render()
-	h := sha256.New()
-	h.Write([]byte(str))
-	info.Hash = fmt.Sprintf("%x", h.Sum(nil))
-	return h.Sum(nil)
 }
 
 type Section struct {
 	Title        string     `yaml:"Title,omitempty"`
 	SubSections  []*Section `yaml:"SubSections,omitempty"`
-	EmbeddingVec []float64  `yaml:"EmbeddingVec,omitempty"`
+	EmbeddingVec []float32  `yaml:"EmbeddingVec,omitempty"`
 	Text         string     `yaml:"Text,omitempty"`
 	Items        []string   `yaml:"Items,omitempty"`
 	Files        []string   `yaml:"Files,omitempty"`
@@ -88,4 +82,25 @@ func Flatten(info any) {
 			}
 		}
 	}
+}
+
+func (info *Information) CreateHash() []byte {
+	str := info.Render()
+	h := sha256.New()
+	h.Write([]byte(str))
+	info.Hash = fmt.Sprintf("%x", h.Sum(nil))
+	return h.Sum(nil)
+}
+
+func (info *Information) CreateEmbedding() (emb []float32, err error) {
+	str := info.Render()
+	embResp, err := ollamaconnector.OllamaChat().GetEmbeddings([]string{str})
+	if err != nil {
+		return nil, err
+	}
+	if len(embResp.Embeddings) == 0 {
+		return nil, fmt.Errorf("couldn't calculate embedding")
+	}
+	info.EmbeddingVec = embResp.Embeddings[0]
+	return embResp.Embeddings[0], nil
 }

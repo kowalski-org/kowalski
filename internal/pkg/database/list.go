@@ -1,8 +1,9 @@
 package database
 
+import "github.com/ostafen/clover/v2/query"
+
 func (kn *Knowledge) List(collection string) (docLst []string, err error) {
-	qr := kn.db.Query(collection)
-	docs, err := qr.FindAll()
+	docs, err := kn.db.FindAll(query.NewQuery(collection))
 	if err != nil {
 		return nil, err
 	}

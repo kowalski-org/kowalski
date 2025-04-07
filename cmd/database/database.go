@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"maps"
 
-	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
 	"github.com/mslacken/kowalski/internal/pkg/database"
 	"github.com/mslacken/kowalski/internal/pkg/docbook"
 	"github.com/spf13/cobra"
@@ -27,7 +26,7 @@ var databaseAdd = &cobra.Command{
 	Short:      "Add document(s) to the given database",
 	Long: `Add a document extracted from a file
 to the given database and create embeddings for it.`,
-	Args: cobra.MinimumNArgs(2),
+	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		entities, err := cmd.PersistentFlags().GetStringArray("entity")
 		if err != nil {
@@ -41,12 +40,25 @@ to the given database and create embeddings for it.`,
 			}
 			maps.Copy(entitiesMap, entMap)
 		}
-		db := database.New()
+		if dump, _ := cmd.PersistentFlags().GetBool("dumpentity"); dump {
+			for key, val := range entitiesMap {
+				fmt.Printf("%s: %s\n", key, val)
+			}
+			return nil
+		}
+		cmd.Args = cobra.MinimumNArgs(2)
+		db, err := database.New()
+		if err != nil {
+			return err
+		}
 		for i := range args[1:] {
 			bk := docbook.Docbook{
 				Entities: entitiesMap,
 			}
 			info, err := bk.ParseDocBook(args[i+1])
+			if err != nil {
+				return err
+			}
 			err = db.AddInformation(args[0], info)
 			if err != nil {
 				return err
@@ -61,7 +73,10 @@ var databaseList = &cobra.Command{
 	ArgAliases: []string{"ls"},
 	Short:      "List (all) documents in the database",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		db := database.New()
+		db, err := database.New()
+		if err != nil {
+			return err
+		}
 		if len(args) == 0 {
 			if colls, err := db.ListCollections(); err != nil {
 				return err
@@ -90,12 +105,17 @@ var databaseCheck = &cobra.Command{
 	ArgAliases: []string{"chk"},
 	Short:      "Check if database has a entry near the question",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		req := ollamaconnector.OllamaEmbedding{}
-		embedding, err := req.GetEmbeddings(args)
+		db, err := database.New()
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Check %v\n", embedding)
+		infos, err := db.GetInfos(args[0], args[1])
+		if err != nil {
+			return err
+		}
+		for _, info := range infos {
+			fmt.Println(info.Render())
+		}
 		return nil
 	},
 	Args: cobra.MinimumNArgs(1),
@@ -106,6 +126,7 @@ func init() {
 	databaseCmd.AddCommand(databaseList)
 	databaseCmd.AddCommand(databaseCheck)
 	databaseAdd.PersistentFlags().StringArray("entity", []string{}, "filename of an xml entity defintions")
+	databaseAdd.PersistentFlags().Bool("dumpentity", false, "just dump the used entity map")
 }
 func GetCommand() *cobra.Command {
 	return databaseCmd

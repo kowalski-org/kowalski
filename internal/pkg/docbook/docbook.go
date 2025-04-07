@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"html"
-	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -31,15 +31,24 @@ func (bk *Docbook) ParseDocBook(filename string) (info information.Information, 
 	if err = doc.ReadFromFile(filename); err != nil {
 		return
 	}
-	root := doc.SelectElement("article")
-	for _, section := range root.SelectElements("section") {
-		subsec := parseElement(section)
-		info.SubSections = append(info.SubSections, &subsec)
-		if subsec.Title == "Environment" {
-			info.OS = append(info.OS, subsec.Items...)
+	if root := doc.SelectElement("article"); root != nil {
+		for _, section := range root.SelectElements("section") {
+			subsec := parseElement(section)
+			info.SubSections = append(info.SubSections, &subsec)
+			if subsec.Title == "Environment" {
+				info.OS = append(info.OS, subsec.Items...)
+			}
+		}
+		// check for overall title
+		if xmlInfo := root.SelectElement("info"); xmlInfo != nil {
+			if elem := xmlInfo.SelectElement("title"); elem != nil {
+				info.Title = elem.Text()
+			}
 		}
 	}
-	log.Printf("Parsing xml file: %s\n", filename)
+	if info.Title == "" {
+		info.Title = filepath.Base(filename)
+	}
 	return
 }
 
