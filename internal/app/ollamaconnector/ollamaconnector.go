@@ -8,14 +8,34 @@ import (
 	"time"
 )
 
-var EmbeddingModel string
-var Model string
-var Url string
+var DefaultEmbeddingModel string
+var DefaultModel string
+var DefaultUrlChat string
+var DefaultUrlEmbedding string
+var DefaultEmbeddingDim int
 
 func init() {
-	EmbeddingModel = "all-minilm"
-	Model = "llama3.1"
-	Url = 
+	DefaultEmbeddingModel = "mxbai-embed-large"
+	DefaultModel = "llama3.1"
+	DefaultUrlChat = "http://localhost:11434/api/chat"
+	DefaultUrlEmbedding = "http://localhost:11434/api/embed"
+	DefaultEmbeddingDim = 1024
+}
+
+type OllamaSettings struct {
+	Model          string
+	EmbeddingModel string
+	UrlChat        string
+	UrlEmbedding   string
+}
+
+func OllamaChat() OllamaSettings {
+	return OllamaSettings{
+		Model:          DefaultModel,
+		EmbeddingModel: DefaultEmbeddingModel,
+		UrlChat:        DefaultUrlChat,
+		UrlEmbedding:   DefaultUrlEmbedding,
+	}
 }
 
 type ChatRequest struct {
@@ -35,11 +55,11 @@ type EmbeddingRequest struct {
 }
 
 type EmbeddingResponse struct {
-	Model           string    `json:"model"`
-	Embeddings      []float64 `json:"embeddings"`
-	TotalDuration   int64     `json:"total_duration"`
-	LoadDuration    int       `json:"load_duration"`
-	PromptEvalCount int       `json:"prompt_eval_count"`
+	Model           string      `json:"model"`
+	Embeddings      [][]float32 `json:"embeddings"`
+	TotalDuration   int64       `json:"total_duration"`
+	LoadDuration    int         `json:"load_duration"`
+	PromptEvalCount int         `json:"prompt_eval_count"`
 }
 
 type ChatResponse struct {
@@ -54,31 +74,24 @@ type ChatResponse struct {
 	EvalCount          int         `json:"eval_count"`
 	EvalDuration       int64       `json:"eval_duration"`
 }
-<<<<<<< HEAD
-type OllamaChat struct {
-	Url string
-	ChatRequest
-}
 
-type OllamaEmbedding struct {
-	Url string
-	EmbeddingRequest
-}
-
-func (ollama *OllamaChat) TalkToOllama(msg ChatMessage) (*ChatResponse, error) {
-	ollama.ChatRequest.Messages = []ChatMessage{msg}
-	js, err := json.Marshal(ollama)
+func (settings OllamaSettings) TalkToOllama(msg []ChatMessage) (*ChatResponse, error) {
+	req := ChatRequest{
+		Messages: msg,
+		Model:    settings.Model,
+	}
+	js, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", ollama.Url, ollama.Model, err)
+		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", settings.UrlChat, settings.Model, err)
 	}
 	client := http.Client{}
-	httpReq, err := http.NewRequest(http.MethodPost, ollama.Url, bytes.NewReader(js))
+	httpReq, err := http.NewRequest(http.MethodPost, settings.UrlChat, bytes.NewReader(js))
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", ollama.Url, ollama.Model, err)
+		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", settings.UrlChat, settings.Model, err)
 	}
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", ollama.Url, ollama.Model, err)
+		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", settings.UrlChat, settings.Model, err)
 	}
 	defer httpResp.Body.Close()
 	var ollamaResp ChatResponse
@@ -86,20 +99,23 @@ func (ollama *OllamaChat) TalkToOllama(msg ChatMessage) (*ChatResponse, error) {
 	return &ollamaResp, err
 }
 
-func (ollama *OllamaEmbedding) GetEmbeddings(emb []string) (*EmbeddingResponse, error) {
-	ollama.EmbeddingRequest.Input = emb
-	js, err := json.Marshal(ollama)
+func (settings OllamaSettings) GetEmbeddings(emb []string) (*EmbeddingResponse, error) {
+	req := EmbeddingRequest{
+		Input: emb,
+		Model: settings.EmbeddingModel,
+	}
+	js, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", ollama.Url, ollama.Model, err)
+		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", settings.UrlEmbedding, settings.EmbeddingModel, err)
 	}
 	client := http.Client{}
-	httpReq, err := http.NewRequest(http.MethodPost, ollama.Url, bytes.NewReader(js))
+	httpReq, err := http.NewRequest(http.MethodPost, settings.UrlEmbedding, bytes.NewReader(js))
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", ollama.Url, ollama.Model, err)
+		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", settings.UrlEmbedding, settings.EmbeddingModel, err)
 	}
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", ollama.Url, ollama.Model, err)
+		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", settings.UrlEmbedding, settings.EmbeddingModel, err)
 	}
 	defer httpResp.Body.Close()
 	var ollamaResp EmbeddingResponse

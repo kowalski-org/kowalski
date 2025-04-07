@@ -15,18 +15,14 @@ He has access to knowledge bases and can access your files
 for better answers.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		modelname, _ := cmd.PersistentFlags().GetString("model")
-		llm := ollamaconnector.OllamaChat{
-			Url: "http://localhost:11434/api/chat",
-			ChatRequest: ollamaconnector.ChatRequest{
-				Model: modelname,
-			},
-		}
-		chat.Chat(&llm)
+		settings := ollamaconnector.OllamaChat()
+		settings.Model = modelname
+		chat.Chat(&settings)
 	},
 }
 
 func init() {
-	chatCmd.PersistentFlags().StringP("model", "m", ollamaconnector.Model, "model name")
+	chatCmd.PersistentFlags().StringP("model", "m", ollamaconnector.DefaultModel, "model name")
 }
 
 func GetCommand() *cobra.Command {
