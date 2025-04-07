@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"reflect"
+	"strings"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
@@ -60,7 +61,12 @@ func (info *Section) Render(args ...any) string {
 	if err := template.Execute(&buf, info); err != nil {
 		log.Printf("couldn't render template: %s\n", err)
 	}
-	return buf.String()
+	return strings.Replace(buf.String(), "\n\n", "\n", -1)
+}
+
+func (info *Information) Empty() bool {
+	return len(info.SubSections) == 0 &&
+		info.Text == ""
 }
 
 func (info *Section) RenderSubsections() (ret string) {

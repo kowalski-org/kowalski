@@ -39,9 +39,9 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 		err := kn.faissIndex.Add(info.EmbeddingVec)
 		if err != nil {
 			return err
-		} */
+		}
+		*/
 		log.Printf("Added '%s' with id: %s sum: %s\n", info.Title, docId, info.Hash)
-
 	} else {
 		log.Printf("Found document '%s': %s %s\n", info.Title, docs[0].ObjectId(), info.Hash)
 	}

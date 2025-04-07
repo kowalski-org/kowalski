@@ -44,19 +44,23 @@ func (bk *Docbook) ParseDocBook(filename string) (info information.Information, 
 			break
 		}
 	}
-	if root := doc.SelectElement("article"); root != nil {
-		for _, section := range root.SelectElements("section") {
-			subsec := parseElement(section)
-			info.SubSections = append(info.SubSections, &subsec)
-			if subsec.Title == "Environment" {
-				info.OS = append(info.OS, subsec.Items...)
+	for _, rootElem := range []string{"article", "topic"} {
+		if root := doc.SelectElement(rootElem); root != nil {
+			for _, section := range root.SelectElements("section") {
+				subsec := parseElement(section)
+				info.SubSections = append(info.SubSections, &subsec)
+				if subsec.Title == "Environment" {
+					info.OS = append(info.OS, subsec.Items...)
+				}
 			}
-		}
-		// check for overall title
-		if xmlInfo := root.SelectElement("info"); xmlInfo != nil {
-			if elem := xmlInfo.SelectElement("title"); elem != nil {
-				info.Title = elem.Text()
+			// check for overall title
+			if xmlInfo := root.SelectElement("info"); xmlInfo != nil {
+				if elem := xmlInfo.SelectElement("title"); elem != nil {
+					info.Title = elem.Text()
+				}
 			}
+			subSec := parseElement(root)
+			info.SubSections = append(info.SubSections, &subSec)
 		}
 	}
 	if info.Title == "" {
@@ -92,6 +96,10 @@ func parseElement(elem *etree.Element) (info information.Section) {
 		case "command":
 			info.Text += "```" + strChild + "``` "
 			info.Commands = []string{subinfo.Text}
+		case "filename":
+			info.Text += "```" + strChild + "``` "
+			info.Files = []string{subinfo.Text}
+
 		default:
 			subinfo := parseElement(child)
 			if info.Title == "Environment" {
@@ -103,6 +111,7 @@ func parseElement(elem *etree.Element) (info information.Section) {
 			}
 		}
 		info.Commands = append(info.Commands, subinfo.Commands...)
+		info.Files = append(info.Files, subinfo.Files...)
 	}
 	return
 }

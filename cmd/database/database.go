@@ -2,12 +2,11 @@ package databasecmd
 
 import (
 	"fmt"
-	"maps"
-
-	"github.com/golang/glog"
 	"github.com/mslacken/kowalski/internal/pkg/database"
 	"github.com/mslacken/kowalski/internal/pkg/docbook"
 	"github.com/spf13/cobra"
+	"log"
+	"maps"
 )
 
 // databaseCmd represents the database command
@@ -58,15 +57,40 @@ to the given database and create embeddings for it.`,
 			}
 			info, err := bk.ParseDocBook(args[i+1])
 			if err != nil {
-				glog.Errorf("error on file: %s %s\n", args[i+1], err)
+				log.Printf("error on file: %s %s\n", args[i+1], err)
 			}
-			err = db.AddInformation(args[0], info)
-			if err != nil {
-				return err
+			if !info.Empty() {
+				err = db.AddInformation(args[0], info)
+				if err != nil {
+					return err
+				}
+			} else {
+				log.Printf("file was empty: %s", args[i+1])
 			}
 		}
 		return nil
 	},
+	Aliases:                    []string{},
+	SuggestFor:                 []string{},
+	GroupID:                    "",
+	Example:                    "",
+	ValidArgs:                  []cobra.Completion{},
+	ValidArgsFunction:          nil,
+	BashCompletionFunction:     "",
+	Deprecated:                 "",
+	Annotations:                map[string]string{},
+	Version:                    "",
+	FParseErrWhitelist:         cobra.FParseErrWhitelist{},
+	CompletionOptions:          cobra.CompletionOptions{},
+	TraverseChildren:           false,
+	Hidden:                     false,
+	SilenceErrors:              false,
+	SilenceUsage:               false,
+	DisableFlagParsing:         false,
+	DisableAutoGenTag:          false,
+	DisableFlagsInUseLine:      false,
+	DisableSuggestions:         false,
+	SuggestionsMinimumDistance: 0,
 }
 
 var databaseList = &cobra.Command{
@@ -119,7 +143,7 @@ var databaseCheck = &cobra.Command{
 		}
 		return nil
 	},
-	Args: cobra.MinimumNArgs(1),
+	Args: cobra.MinimumNArgs(2),
 }
 
 func init() {
