@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 
+	"github.com/golang/glog"
 	"github.com/mslacken/kowalski/internal/pkg/database"
 	"github.com/mslacken/kowalski/internal/pkg/docbook"
 	"github.com/spf13/cobra"
@@ -57,7 +58,7 @@ to the given database and create embeddings for it.`,
 			}
 			info, err := bk.ParseDocBook(args[i+1])
 			if err != nil {
-				return err
+				glog.Errorf("error on file: %s %s\n", args[i+1], err)
 			}
 			err = db.AddInformation(args[0], info)
 			if err != nil {

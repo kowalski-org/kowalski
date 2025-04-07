@@ -28,8 +28,21 @@ func (bk *Docbook) ParseDocBook(filename string) (info information.Information, 
 	doc.ReadSettings = etree.ReadSettings{
 		Entity: bk.Entities,
 	}
-	if err = doc.ReadFromFile(filename); err != nil {
-		return
+	for {
+		err = doc.ReadFromFile(filename)
+		if err != nil {
+			errorRegEx := regexp.MustCompile(`XML syntax error on line [0-9]+: invalid character entity &(.*);`)
+			match := errorRegEx.FindStringSubmatch(err.Error())
+			if len(match) == 2 {
+				if match[1] != "" {
+					bk.Entities[match[1]] = match[1]
+				}
+			} else {
+				return info, err
+			}
+		} else {
+			break
+		}
 	}
 	if root := doc.SelectElement("article"); root != nil {
 		for _, section := range root.SelectElements("section") {
