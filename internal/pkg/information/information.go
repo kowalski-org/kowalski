@@ -114,7 +114,7 @@ func (info *Information) CreateHash() []byte {
 
 func (info *Information) CreateEmbedding() (emb []float32, err error) {
 	str := info.Render()
-	embResp, err := ollamaconnector.OllamaChat().GetEmbeddings([]string{str})
+	embResp, err := ollamaconnector.Ollama().GetEmbeddings([]string{str})
 	if err != nil {
 		return nil, err
 	}

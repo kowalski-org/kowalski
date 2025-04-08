@@ -32,7 +32,10 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 
 	docs, _ := kn.db.FindAll(query.NewQuery(collection).Where(query.Field("Hash").Eq(info.Hash)))
 	if len(docs) == 0 {
-		info.CreateEmbedding()
+		_, err = info.CreateEmbedding()
+		if err != nil {
+			return err
+		}
 		doc := document.NewDocumentOf(info)
 		docId, _ := kn.db.InsertOne(collection, doc)
 		/* Do not add to faiss right now, as the index isn't stored
@@ -51,7 +54,7 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 
 func (kn *Knowledge) GetInfos(collection, question string) (documents []information.Information, err error) {
 	kn.CreateIndex(collection)
-	emb, err := ollamaconnector.OllamaChat().GetEmbeddings([]string{question})
+	emb, err := ollamaconnector.Ollama().GetEmbeddings([]string{question})
 	if err != nil {
 		return nil, err
 	}

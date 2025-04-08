@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 
@@ -37,7 +38,8 @@ func New(args ...KnowledgeArgs) (*Knowledge, error) {
 	if err != nil {
 		return nil, err
 	}
-	faissIndex, err := faiss.NewIndexFlat(ollamaconnector.DefaultEmbeddingDim, 1)
+	settings := ollamaconnector.Ollama()
+	faissIndex, err := faiss.NewIndexFlat(settings.EmbeddingLength, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -56,9 +58,10 @@ func OptionWithFile(filename string) KnowledgeArgs {
 func (kn *Knowledge) CreateIndex(collection string) (err error) {
 	kn.db.ForEach(query.NewQuery(collection), func(doc *document.Document) bool {
 		embFromDB := doc.Get("EmbeddingVec").([]interface{})
-		emb := make([]float32, ollamaconnector.DefaultEmbeddingDim)
+		settings := ollamaconnector.Ollama()
+		emb := make([]float32, settings.EmbeddingLength)
 		if len(embFromDB) != len(emb) {
-			panic("wrong embedding dimesions")
+			panic(fmt.Sprintf("wrong embedding dimensions faiss: %d emb: %d", len(embFromDB), len(emb)))
 		}
 		for i := range embFromDB {
 			emb[i] = float32(embFromDB[i].(float64))

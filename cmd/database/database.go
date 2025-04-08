@@ -2,11 +2,13 @@ package databasecmd
 
 import (
 	"fmt"
+	"log"
+	"maps"
+
+	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
 	"github.com/mslacken/kowalski/internal/pkg/database"
 	"github.com/mslacken/kowalski/internal/pkg/docbook"
 	"github.com/spf13/cobra"
-	"log"
-	"maps"
 )
 
 // databaseCmd represents the database command
@@ -70,27 +72,18 @@ to the given database and create embeddings for it.`,
 		}
 		return nil
 	},
-	Aliases:                    []string{},
-	SuggestFor:                 []string{},
-	GroupID:                    "",
-	Example:                    "",
-	ValidArgs:                  []cobra.Completion{},
-	ValidArgsFunction:          nil,
-	BashCompletionFunction:     "",
-	Deprecated:                 "",
-	Annotations:                map[string]string{},
-	Version:                    "",
-	FParseErrWhitelist:         cobra.FParseErrWhitelist{},
-	CompletionOptions:          cobra.CompletionOptions{},
-	TraverseChildren:           false,
-	Hidden:                     false,
-	SilenceErrors:              false,
-	SilenceUsage:               false,
-	DisableFlagParsing:         false,
-	DisableAutoGenTag:          false,
-	DisableFlagsInUseLine:      false,
-	DisableSuggestions:         false,
-	SuggestionsMinimumDistance: 0,
+	Aliases:                []string{},
+	SuggestFor:             []string{},
+	GroupID:                "",
+	Example:                "",
+	ValidArgs:              []cobra.Completion{},
+	ValidArgsFunction:      nil,
+	BashCompletionFunction: "",
+	Deprecated:             "",
+	Annotations:            map[string]string{},
+	Version:                "",
+	FParseErrWhitelist:     cobra.FParseErrWhitelist{},
+	CompletionOptions:      cobra.CompletionOptions{},
 }
 
 var databaseList = &cobra.Command{

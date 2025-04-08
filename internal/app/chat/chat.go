@@ -13,7 +13,7 @@ import (
 
 const gap = "\n\n"
 
-func Chat(llm *ollamaconnector.OllamaSettings) error {
+func Chat(llm *ollamaconnector.Settings) error {
 	uimodel := initialModel(llm)
 	p := tea.NewProgram(uimodel)
 	if _, err := p.Run(); err != nil {
@@ -31,11 +31,11 @@ type uimodel struct {
 	messages    []string
 	textarea    textarea.Model
 	senderStyle lipgloss.Style
-	ollama      *ollamaconnector.OllamaSettings
+	ollama      *ollamaconnector.Settings
 	err         error
 }
 
-func initialModel(llm *ollamaconnector.OllamaSettings) uimodel {
+func initialModel(llm *ollamaconnector.Settings) uimodel {
 	ta := textarea.New()
 	ta.Placeholder = "Type CTR-C or ESC to quit..."
 	ta.Focus()

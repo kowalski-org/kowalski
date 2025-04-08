@@ -4,38 +4,37 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
-var DefaultEmbeddingModel string
-var DefaultModel string
-var DefaultUrlChat string
-var DefaultUrlEmbedding string
-var DefaultEmbeddingDim int
+var emblength *int
 
-func init() {
-	DefaultEmbeddingModel = "mxbai-embed-large"
-	DefaultModel = "llama3.1"
-	DefaultUrlChat = "http://localhost:11434/api/chat"
-	DefaultUrlEmbedding = "http://localhost:11434/api/embed"
-	DefaultEmbeddingDim = 1024
+type Settings struct {
+	Model           string
+	EmbeddingModel  string
+	OllamaURL       string
+	EmbeddingLength int
 }
 
-type OllamaSettings struct {
-	Model          string
-	EmbeddingModel string
-	UrlChat        string
-	UrlEmbedding   string
-}
-
-func OllamaChat() OllamaSettings {
-	return OllamaSettings{
-		Model:          DefaultModel,
-		EmbeddingModel: DefaultEmbeddingModel,
-		UrlChat:        DefaultUrlChat,
-		UrlEmbedding:   DefaultUrlEmbedding,
+func OllamaOffline() Settings {
+	return Settings{
+		Model:          "llama3.1",
+		EmbeddingModel: "nomic-embed-text",
+		OllamaURL:      "http://localhost:11434/api/",
 	}
+}
+
+func Ollama() Settings {
+	sett := OllamaOffline()
+	if emblength == nil {
+		length, _ := sett.GetEmbeddingSize()
+		emblength = &length
+	}
+	sett.EmbeddingLength = *emblength
+	return sett
 }
 
 type ChatRequest struct {
@@ -75,23 +74,35 @@ type ChatResponse struct {
 	EvalDuration       int64       `json:"eval_duration"`
 }
 
-func (settings OllamaSettings) TalkToOllama(msg []ChatMessage) (*ChatResponse, error) {
+type ModelInfo struct {
+	License       string         `json:"license,omitempty"`
+	Modelfile     string         `json:"modelfile,omitempty"`
+	Parameters    string         `json:"parameters,omitempty"`
+	Template      string         `json:"template,omitempty"`
+	System        string         `json:"system,omitempty"`
+	ModelInfo     map[string]any `json:"model_info,omitempty"`
+	ProjectorInfo map[string]any `json:"projector_info,omitempty"`
+	ModifiedAt    time.Time      `json:"modified_at,omitempty"`
+}
+
+func (settings Settings) TalkToOllama(msg []ChatMessage) (*ChatResponse, error) {
+	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/chat"
 	req := ChatRequest{
 		Messages: msg,
 		Model:    settings.Model,
 	}
 	js, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", settings.UrlChat, settings.Model, err)
+		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
 	}
 	client := http.Client{}
-	httpReq, err := http.NewRequest(http.MethodPost, settings.UrlChat, bytes.NewReader(js))
+	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", settings.UrlChat, settings.Model, err)
+		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
 	}
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", settings.UrlChat, settings.Model, err)
+		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
 	}
 	defer httpResp.Body.Close()
 	var ollamaResp ChatResponse
@@ -99,26 +110,77 @@ func (settings OllamaSettings) TalkToOllama(msg []ChatMessage) (*ChatResponse, e
 	return &ollamaResp, err
 }
 
-func (settings OllamaSettings) GetEmbeddings(emb []string) (*EmbeddingResponse, error) {
+func (settings Settings) GetEmbeddings(emb []string) (*EmbeddingResponse, error) {
+	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/embed"
 	req := EmbeddingRequest{
 		Input: emb,
 		Model: settings.EmbeddingModel,
 	}
 	js, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", settings.UrlEmbedding, settings.EmbeddingModel, err)
+		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", URL, settings.EmbeddingModel, err)
 	}
 	client := http.Client{}
-	httpReq, err := http.NewRequest(http.MethodPost, settings.UrlEmbedding, bytes.NewReader(js))
+	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", settings.UrlEmbedding, settings.EmbeddingModel, err)
+		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", URL, settings.EmbeddingModel, err)
 	}
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", settings.UrlEmbedding, settings.EmbeddingModel, err)
+		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", URL, settings.EmbeddingModel, err)
 	}
 	defer httpResp.Body.Close()
 	var ollamaResp EmbeddingResponse
 	err = json.NewDecoder(httpResp.Body).Decode(&ollamaResp)
+	if err != nil {
+		bodyBytes, _ := io.ReadAll(httpResp.Body)
+		fmt.Printf("Body\n %s\n", string(bodyBytes))
+	}
 	return &ollamaResp, err
+}
+
+func (settings Settings) GetEmbeddingSize() (int, error) {
+	info, err := settings.GetEmbeddingInfo()
+	if err != nil {
+		return 0, err
+	}
+	if modelArch, ok := info.ModelInfo["general.architecture"].(string); ok {
+		// Follwing if clause doesn't work, I don't know why
+		// if _, ok_l := info.ModelInfo["nomic-bert.embedding_length"].(int32); ok_l {
+		return int(info.ModelInfo[modelArch+".embedding_length"].(float64)), nil
+		// }
+		// return 0, fmt.Errorf("couldn't determine embdding length of %s", modelArch)
+	}
+	return 0, fmt.Errorf("couldn't get model info")
+
+}
+func (settings Settings) GetEmbeddingInfo() (*ModelInfo, error) {
+	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/show"
+	var req = struct {
+		Model   string `json:"model,omitempty"`
+		Verbose bool   `json:"verbos,omitempty"`
+	}{
+		Model:   settings.EmbeddingModel,
+		Verbose: false,
+	}
+	js, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", URL, settings.EmbeddingModel, err)
+	}
+	client := http.Client{}
+	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
+	if err != nil {
+		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", URL, settings.EmbeddingModel, err)
+	}
+	httpResp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", URL, settings.EmbeddingModel, err)
+	}
+	defer httpResp.Body.Close()
+	var info ModelInfo
+	err = json.NewDecoder(httpResp.Body).Decode(&info)
+	if err != nil {
+		return nil, err
+	}
+	return &info, nil
 }

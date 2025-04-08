@@ -15,14 +15,14 @@ He has access to knowledge bases and can access your files
 for better answers.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		modelname, _ := cmd.PersistentFlags().GetString("model")
-		settings := ollamaconnector.OllamaChat()
+		settings := ollamaconnector.Ollama()
 		settings.Model = modelname
 		chat.Chat(&settings)
 	},
 }
 
 func init() {
-	chatCmd.PersistentFlags().StringP("model", "m", ollamaconnector.DefaultModel, "model name")
+	chatCmd.PersistentFlags().StringP("model", "m", ollamaconnector.Ollama().EmbeddingModel, "model name")
 }
 
 func GetCommand() *cobra.Command {
