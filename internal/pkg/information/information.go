@@ -14,13 +14,18 @@ import (
 )
 
 const defaultTemplate = `
-{{.Title}}
-{{ .Text }}
+{{- if .Title }}{{ Section }} {{.Title}}{{ end }}
+{{- if .Text }}{{ .Text }}{{ end}}
 {{- range $it := .Items }}
 * {{ $it }}
 {{- end }}
-{{ .RenderSubsections }}
+{{ RenderSubsections .Level }}
 `
+
+type RenderData struct {
+	Level int
+	Section
+}
 
 type Information struct {
 	OS   []string
@@ -40,15 +45,21 @@ type Section struct {
 }
 
 func (info *Section) Render(args ...any) string {
+	level := 0
 	tmpl := defaultTemplate
 	for _, arg := range args {
 		switch t := arg.(type) {
 		case string:
 			tmpl = t
+		case int:
+			level = t
 		}
 	}
 	funcMap := template.FuncMap{
 		"RenderSubsections": info.RenderSubsections,
+		"Section": func() string {
+			return strings.Repeat("#", level)
+		},
 	}
 	for key, value := range sprig.TxtFuncMap() {
 		funcMap[key] = value
@@ -58,7 +69,10 @@ func (info *Section) Render(args ...any) string {
 		log.Printf("couldn't parse template: %s\n", err)
 	}
 	var buf bytes.Buffer
-	if err := template.Execute(&buf, info); err != nil {
+	if err := template.Execute(&buf, RenderData{
+		Section: *info,
+		Level:   level,
+	}); err != nil {
 		log.Printf("couldn't render template: %s\n", err)
 	}
 	return strings.Replace(buf.String(), "\n\n", "\n", -1)
@@ -69,9 +83,9 @@ func (info *Information) Empty() bool {
 		info.Text == ""
 }
 
-func (info *Section) RenderSubsections() (ret string) {
+func (info *Section) RenderSubsections(level int) (ret string) {
 	for _, sec := range info.SubSections {
-		ret += sec.Render()
+		ret += sec.Render(level + 1)
 	}
 	return
 }

@@ -71,21 +71,21 @@ func (bk *Docbook) ParseDocBook(filename string) (info information.Information, 
 
 func parseElement(elem *etree.Element) (info information.Section) {
 	{
-		str := strings.TrimSpace(strings.ReplaceAll(html.UnescapeString(elem.Text()), "\n", ""))
-		info.Text = str
+		// str := strings.TrimSpace(strings.ReplaceAll(html.UnescapeString(elem.Text()), "\n", ""))
+		info.Text = cleanText(elem.Text())
 	}
 	for _, child := range elem.ChildElements() {
 		subinfo := parseElement(child)
-		strChild := subinfo.Text
+		strChild := cleanText(subinfo.Text)
 		switch child.Tag {
 		case "title", "Title":
 			info.Title = subinfo.Text
 		case "para":
 			info.Text += subinfo.Text
 		case "literal", "replaceable":
-			str := strings.TrimSpace(strings.ReplaceAll(html.UnescapeString(child.Text()), "\n", ""))
-			info.Text += " `" + str + "` "
-			info.Text += child.Tail()
+			// str := strings.TrimSpace(strings.ReplaceAll(html.UnescapeString(child.Text()), "\n", ""))
+			info.Text += " `" + cleanText(child.Text()) + "` "
+			info.Text += " " + cleanText(child.Tail())
 		case "listitem":
 			info.Items = append(info.Items, strChild)
 		case "varlistentry":
@@ -94,10 +94,10 @@ func parseElement(elem *etree.Element) (info information.Section) {
 		case "term", "screen":
 			info.Text += strChild
 		case "command":
-			info.Text += "```" + strChild + "``` "
+			info.Text += " `" + strChild + "` "
 			info.Commands = []string{subinfo.Text}
 		case "filename":
-			info.Text += "```" + strChild + "``` "
+			info.Text += " `" + strChild + "` "
 			info.Files = []string{subinfo.Text}
 
 		default:
@@ -113,6 +113,17 @@ func parseElement(elem *etree.Element) (info information.Section) {
 		info.Commands = append(info.Commands, subinfo.Commands...)
 		info.Files = append(info.Files, subinfo.Files...)
 	}
+	return
+}
+
+func cleanText(input string) (output string) {
+	output = input
+	output = html.UnescapeString(output)
+	output = strings.Replace(output, "prompt.sudo", " sudo ", -1)
+	output = strings.Replace(output, "nbsp", " ", -1)
+	output = strings.Replace(output, "  ", " ", -1)
+	output = strings.TrimSpace(output)
+	output = strings.Replace(output, "\n\n", "\n", -1)
 	return
 }
 
