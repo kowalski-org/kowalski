@@ -52,8 +52,8 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 
 }
 
-func (kn *Knowledge) GetInfos(collection, question string) (documents []information.Information, err error) {
-	kn.CreateIndex(collection)
+func (kn *Knowledge) GetInfos(question string, collections []string) (documents []information.Information, err error) {
+	kn.CreateIndex(collections)
 	emb, err := ollamaconnector.Ollama().GetEmbeddings([]string{question})
 	if err != nil {
 		return nil, err
@@ -64,9 +64,21 @@ func (kn *Knowledge) GetInfos(collection, question string) (documents []informat
 	}
 	for i, indx := range indexVec {
 		if indx >= 0 && indx < int64(len(kn.faissId)) {
-			dbdoc, err := kn.db.FindById(collection, kn.faissId[indx])
-			if err != nil {
-				return nil, err
+			var dbdoc *document.Document
+			if len(collections) == 0 {
+				collections, err = kn.db.ListCollections()
+				if err != nil {
+					return
+				}
+			}
+			for _, collection := range collections {
+				dbdoc, err = kn.db.FindById(collection, kn.faissId[indx])
+				if err != nil {
+					return nil, err
+				}
+				if dbdoc.ObjectId() != "" {
+					break
+				}
 			}
 			var info information.Information
 			err = dbdoc.Unmarshal(&info)

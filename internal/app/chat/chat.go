@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
+	"github.com/mslacken/kowalski/internal/pkg/database"
 )
 
 const gap = "\n\n"
@@ -96,18 +97,16 @@ func (m uimodel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fmt.Println(m.textarea.Value())
 			return m, tea.Quit
 		case tea.KeyEnter:
-			resp, err := m.ollama.TalkToOllama(
-				[]ollamaconnector.ChatMessage{{
-					Role:    "user",
-					Content: m.textarea.Value(),
-				}})
+			context, err := database.GetContext(m.textarea.Value(), []string{})
+			prompt := strings.Join([]string{context, m.textarea.Value()}, "\n")
+			resp, err := m.ollama.SendTask(prompt)
 			if err != nil {
 				m.err = err
 				fmt.Println("An errror occured", err)
 				return m, nil
 			}
 			m.messages = append(m.messages, m.senderStyle.Render("You: ")+m.textarea.Value(),
-				"Kowalski: "+resp.Message.Content)
+				"Kowalski: "+resp.Response)
 			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(
 				strings.Join(m.messages, "\n")))
 			m.textarea.Reset()

@@ -11,16 +11,8 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
+	"github.com/mslacken/kowalski/internal/pkg/templates"
 )
-
-const defaultTemplate = `
-{{- if .Title }}{{ Section }} {{.Title}}{{ end }}
-{{- if .Text }}{{ .Text }}{{ end}}
-{{- range $it := .Items }}
-* {{ $it }}
-{{- end }}
-{{ RenderSubsections .Level }}
-`
 
 type RenderData struct {
 	Level int
@@ -46,7 +38,7 @@ type Section struct {
 
 func (info *Section) Render(args ...any) string {
 	level := 0
-	tmpl := defaultTemplate
+	tmpl := templates.RenderInfo
 	for _, arg := range args {
 		switch t := arg.(type) {
 		case string:

@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/mslacken/kowalski/internal/pkg/templates"
 )
 
 var emblength *int
@@ -21,7 +23,7 @@ type Settings struct {
 
 func OllamaOffline() Settings {
 	return Settings{
-		Model:          "llama3.1",
+		Model:          "gemma3:4b",
 		EmbeddingModel: "nomic-embed-text",
 		OllamaURL:      "http://localhost:11434/api/",
 	}
@@ -37,15 +39,26 @@ func Ollama() Settings {
 	return sett
 }
 
-type ChatRequest struct {
-	Model    string        `json:"model"`
-	Messages []ChatMessage `json:"messages"`
-	Stream   bool          `json:"stream"`
+type TaskRequest struct {
+	Model   string         `json:"model"`
+	Prompt  string         `json:"prompt"`
+	Format  string         `json:"format"`
+	Options map[string]any `json:"options"`
+	Stream  bool           `json:"stream"`
+	System  string         `json:"system"`
 }
 
-type ChatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+type GenerateReq struct {
+	Model  string `json:"model"`
+	Prompt string `json:"prompt"`
+	Stream bool   `json:"stream"`
+	Format string `json:"format"`
+}
+
+type Message struct {
+	Role       string `json:"role"`
+	Content    string `json:"content"`
+	Tool_Calls []any  `json:"tool_calls"`
 }
 
 type EmbeddingRequest struct {
@@ -61,17 +74,17 @@ type EmbeddingResponse struct {
 	PromptEvalCount int         `json:"prompt_eval_count"`
 }
 
-type ChatResponse struct {
-	Model              string      `json:"model"`
-	CreatedAt          time.Time   `json:"created_at"`
-	Message            ChatMessage `json:"message"`
-	Done               bool        `json:"done"`
-	TotalDuration      int64       `json:"total_duration"`
-	LoadDuration       int         `json:"load_duration"`
-	PromptEvalCount    int         `json:"prompt_eval_count"`
-	PromptEvalDuration int         `json:"prompt_eval_duration"`
-	EvalCount          int         `json:"eval_count"`
-	EvalDuration       int64       `json:"eval_duration"`
+type TaskResponse struct {
+	Model              string    `json:"model"`
+	CreatedAt          time.Time `json:"created_at"`
+	Response           string    `json:"response"`
+	Done               bool      `json:"done"`
+	TotalDuration      int64     `json:"total_duration"`
+	LoadDuration       int       `json:"load_duration"`
+	PromptEvalCount    int       `json:"prompt_eval_count"`
+	PromptEvalDuration int       `json:"prompt_eval_duration"`
+	EvalCount          int       `json:"eval_count"`
+	EvalDuration       int64     `json:"eval_duration"`
 }
 
 type ModelInfo struct {
@@ -85,15 +98,16 @@ type ModelInfo struct {
 	ModifiedAt    time.Time      `json:"modified_at,omitempty"`
 }
 
-func (settings Settings) TalkToOllama(msg []ChatMessage) (*ChatResponse, error) {
-	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/chat"
-	req := ChatRequest{
-		Messages: msg,
-		Model:    settings.Model,
+func (settings Settings) SendTask(msg string) (resp *TaskResponse, err error) {
+	req := TaskRequest{
+		Prompt: msg,
+		System: templates.SystemPrompt,
+		Model:  settings.Model,
 	}
+	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/generate"
 	js, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
+		return nil, fmt.Errorf("couldn't marshal message: %s", err)
 	}
 	client := http.Client{}
 	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
@@ -105,7 +119,7 @@ func (settings Settings) TalkToOllama(msg []ChatMessage) (*ChatResponse, error) 
 		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
 	}
 	defer httpResp.Body.Close()
-	var ollamaResp ChatResponse
+	ollamaResp := TaskResponse{}
 	err = json.NewDecoder(httpResp.Body).Decode(&ollamaResp)
 	return &ollamaResp, err
 }
@@ -183,4 +197,24 @@ func (settings Settings) GetEmbeddingInfo() (*ModelInfo, error) {
 		return nil, err
 	}
 	return &info, nil
+}
+
+func (settings Settings) GetReq(req GenerateReq) (str string, err error) {
+	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/generate"
+	js, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
+	}
+	client := http.Client{}
+	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
+	if err != nil {
+		return "", fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
+	}
+	httpResp, err := client.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
+	}
+	defer httpResp.Body.Close()
+	bodyBytes, _ := io.ReadAll(httpResp.Body)
+	return string(bodyBytes), nil
 }

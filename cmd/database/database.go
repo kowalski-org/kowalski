@@ -5,7 +5,6 @@ import (
 	"log"
 	"maps"
 
-	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
 	"github.com/mslacken/kowalski/internal/pkg/database"
 	"github.com/mslacken/kowalski/internal/pkg/docbook"
 	"github.com/spf13/cobra"
@@ -72,18 +71,7 @@ to the given database and create embeddings for it.`,
 		}
 		return nil
 	},
-	Aliases:                []string{},
-	SuggestFor:             []string{},
-	GroupID:                "",
-	Example:                "",
-	ValidArgs:              []cobra.Completion{},
-	ValidArgsFunction:      nil,
-	BashCompletionFunction: "",
-	Deprecated:             "",
-	Annotations:            map[string]string{},
-	Version:                "",
-	FParseErrWhitelist:     cobra.FParseErrWhitelist{},
-	CompletionOptions:      cobra.CompletionOptions{},
+	Annotations: map[string]string{},
 }
 
 var databaseList = &cobra.Command{
@@ -124,10 +112,15 @@ var databaseCheck = &cobra.Command{
 	Short:      "Check if database has a entry near the question",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		db, err := database.New()
+		defer db.Close()
 		if err != nil {
 			return err
 		}
-		infos, err := db.GetInfos(args[0], args[1])
+		collections := []string{}
+		if len(args) > 1 {
+			collections = args[1:]
+		}
+		infos, err := db.GetInfos(args[0], collections)
 		if err != nil {
 			return err
 		}
@@ -136,7 +129,7 @@ var databaseCheck = &cobra.Command{
 		}
 		return nil
 	},
-	Args: cobra.MinimumNArgs(2),
+	Args: cobra.MinimumNArgs(1),
 }
 
 func init() {

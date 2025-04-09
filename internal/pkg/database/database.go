@@ -46,6 +46,10 @@ func New(args ...KnowledgeArgs) (*Knowledge, error) {
 	return &Knowledge{db: db, faissIndex: faissIndex}, nil
 }
 
+func (kn *Knowledge) Close() {
+	kn.db.Close()
+}
+
 type KnowledgeArgs func(*KnowledgeOpts)
 
 func OptionWithFile(filename string) KnowledgeArgs {
@@ -55,24 +59,32 @@ func OptionWithFile(filename string) KnowledgeArgs {
 
 }
 
-func (kn *Knowledge) CreateIndex(collection string) (err error) {
-	kn.db.ForEach(query.NewQuery(collection), func(doc *document.Document) bool {
-		embFromDB := doc.Get("EmbeddingVec").([]interface{})
-		settings := ollamaconnector.Ollama()
-		emb := make([]float32, settings.EmbeddingLength)
-		if len(embFromDB) != len(emb) {
-			panic(fmt.Sprintf("wrong embedding dimensions faiss: %d emb: %d", len(embFromDB), len(emb)))
-		}
-		for i := range embFromDB {
-			emb[i] = float32(embFromDB[i].(float64))
-		}
-		err := kn.faissIndex.Add(emb)
-		if err != nil {
-			panic("failed to add document to faiss index")
-		}
-		kn.faissId = append(kn.faissId, doc.ObjectId())
-		return true
-	})
+func (kn *Knowledge) CreateIndex(collections []string) (err error) {
+	if len(collections) == 0 {
+		collections, err = kn.db.ListCollections()
+	}
+	if err != nil {
+		return err
+	}
+	for _, collection := range collections {
+		kn.db.ForEach(query.NewQuery(collection), func(doc *document.Document) bool {
+			embFromDB := doc.Get("EmbeddingVec").([]interface{})
+			settings := ollamaconnector.Ollama()
+			emb := make([]float32, settings.EmbeddingLength)
+			if len(embFromDB) != len(emb) {
+				panic(fmt.Sprintf("wrong embedding dimensions faiss: %d emb: %d", len(embFromDB), len(emb)))
+			}
+			for i := range embFromDB {
+				emb[i] = float32(embFromDB[i].(float64))
+			}
+			err := kn.faissIndex.Add(emb)
+			if err != nil {
+				panic("failed to add document to faiss index")
+			}
+			kn.faissId = append(kn.faissId, doc.ObjectId())
+			return true
+		})
+	}
 	// \TODO close db
 	// kn.db.Close()
 	return
