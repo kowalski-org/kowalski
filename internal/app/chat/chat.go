@@ -100,19 +100,27 @@ func (m uimodel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fmt.Println(m.textarea.Value())
 			return m, tea.Quit
 		case tea.KeyEnter:
+			m.messages = append(m.messages, m.senderStyle.Render(m.uid+": ")+m.textarea.Value(),
+				"Kowalski: ")
+			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(
+				strings.Join(m.messages, "\n")))
+			m.textarea.Reset()
 			context, err := database.GetContext(m.textarea.Value(), []string{})
-			prompt := strings.Join([]string{context, m.textarea.Value()}, "\n")
-			resp, err := m.ollama.SendTask(prompt)
 			if err != nil {
 				m.err = err
 				fmt.Println("An errror occured", err)
 				return m, nil
 			}
-			m.messages = append(m.messages, m.senderStyle.Render(m.uid+": ")+m.textarea.Value(),
-				"Kowalski: "+resp.Response)
-			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(
-				strings.Join(m.messages, "\n")))
-			m.textarea.Reset()
+			prompt := strings.Join([]string{context, m.textarea.Value()}, "\n")
+			ch := make(chan *ollamaconnector.TaskResponse)
+			go m.ollama.SendTaskStream(prompt, ch)
+			ollamaResp := []string{}
+			for resp := range ch {
+				ollamaResp = append(ollamaResp, resp.Response)
+				m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(
+					strings.Join(m.messages, "\n") + strings.Join(ollamaResp, "")))
+			}
+
 			m.viewport.GotoBottom()
 		}
 

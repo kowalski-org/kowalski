@@ -102,6 +102,7 @@ func (settings Settings) SendTask(msg string) (resp *TaskResponse, err error) {
 		// System: templates.SystemPrompt,
 		Model:   settings.Model,
 		Options: map[string]any{"Temperature": 0},
+		Stream:  false,
 	}
 	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/generate"
 	js, err := json.Marshal(req)
@@ -122,7 +123,40 @@ func (settings Settings) SendTask(msg string) (resp *TaskResponse, err error) {
 	err = json.NewDecoder(httpResp.Body).Decode(&ollamaResp)
 	return &ollamaResp, err
 }
-
+func (settings Settings) SendTaskStream(msg string, resp chan *TaskResponse) (err error) {
+	req := TaskRequest{
+		Prompt: msg,
+		// System: templates.SystemPrompt,
+		Model:   settings.Model,
+		Options: map[string]any{"Temperature": 0},
+		Stream:  true,
+	}
+	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/generate"
+	js, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("couldn't marshal message: %s", err)
+	}
+	client := http.Client{}
+	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
+	if err != nil {
+		return fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
+	}
+	httpResp, err := client.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
+	}
+	dec := json.NewDecoder(httpResp.Body)
+	for {
+		ollamaResp := TaskResponse{}
+		err = dec.Decode(&ollamaResp)
+		if err != nil {
+			break
+		}
+		resp <- &ollamaResp
+	}
+	close(resp)
+	return
+}
 func (settings Settings) GetEmbeddings(emb []string) (*EmbeddingResponse, error) {
 	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/embed"
 	req := EmbeddingRequest{

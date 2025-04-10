@@ -30,14 +30,18 @@ var reqCmd = &cobra.Command{
 	Short: "send request from commandline",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		context, err := database.GetContext(args[0], []string{})
-		prompt := strings.Join([]string{context, args[0]}, "\n")
-		fmt.Println("Prompt:", prompt)
-		sett := ollamaconnector.Ollama()
-		resp, err := sett.SendTask(prompt)
 		if err != nil {
 			return err
 		}
-		fmt.Println(resp.Response)
+		prompt := strings.Join([]string{context, args[0]}, "\n")
+		fmt.Println("Prompt:", prompt)
+		sett := ollamaconnector.Ollama()
+		ch := make(chan *ollamaconnector.TaskResponse)
+		go sett.SendTaskStream(prompt, ch)
+		for resp := range ch {
+			fmt.Printf("%s", resp.Response)
+		}
+		fmt.Println()
 		return nil
 	},
 	Args: cobra.MinimumNArgs(1),
