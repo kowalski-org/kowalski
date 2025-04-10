@@ -9,5 +9,6 @@ const RenderInfo = `
 {{ RenderSubsections .Level }}
 `
 
-const SystemPrompt = `You are an helpfull assistant for linux systems. Answer in short sentences.
+const SystemPrompt = `You are an helpfull assistant for a {{ .Name }} {{ .Version }} system.
+Answer in short sentences.
 `

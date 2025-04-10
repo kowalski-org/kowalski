@@ -2,17 +2,38 @@ package database
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"text/template"
 	"unicode/utf8"
+
+	"github.com/Masterminds/sprig/v3"
+	"github.com/mslacken/kowalski/internal/pkg/templates"
+	"github.com/spf13/viper"
 )
 
-const maxentries = 10
+type SystemInfo struct {
+	Name    string
+	Version string
+}
+
+const maxdirentries = 10
 const filemaxsize = 2048
 
 func GetContext(msg string, collections []string) (context string, err error) {
+	funcMap := template.FuncMap{}
+	for key, value := range sprig.TxtFuncMap() {
+		funcMap[key] = value
+	}
+	var buf bytes.Buffer
+	sysinfo, err := template.New("sysinfo").Funcs(funcMap).Parse(templates.SystemPrompt)
+	if err := sysinfo.Execute(&buf, GetSystemInfo()); err != nil {
+		return "", err
+	}
+	context += buf.String()
 	db, err := New()
 	defer db.Close()
 	if err != nil {
@@ -38,14 +59,14 @@ func GetContext(msg string, collections []string) (context string, err error) {
 				}
 				if fileStat.IsDir() {
 					entries, _ := os.ReadDir(file)
-					if len(entries) < maxentries {
+					if len(entries) < maxdirentries {
 						var strEnt []string
 						for _, ent := range entries {
 							strEnt = append(strEnt, ent.Name())
 						}
 						context += fmt.Sprintf("* directory %s has following entries %s", file, strings.Join(strEnt, ","))
 					} else {
-						context += fmt.Sprintf("* directory %s has more than %d entries", file, maxentries)
+						context += fmt.Sprintf("* directory %s has more than %d entries", file, maxdirentries)
 
 					}
 				} else {
@@ -71,4 +92,18 @@ func GetContext(msg string, collections []string) (context string, err error) {
 		}
 	}
 	return
+}
+
+func GetSystemInfo() (sysinfo SystemInfo) {
+	osRel := viper.New()
+	osRel.SetConfigType("env")
+	osRel.SetDefault("NAME", "Unknown linux")
+	osRel.SetDefault("VERSION", "0")
+	if fh, err := os.Open("/etc/os-release"); err == nil {
+		osRel.ReadConfig(fh)
+	}
+	return SystemInfo{
+		Name:    osRel.GetString("NAME"),
+		Version: osRel.GetString("VERSION"),
+	}
 }

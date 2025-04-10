@@ -2,6 +2,7 @@ package chat
 
 import (
 	"fmt"
+	"os/user"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -33,6 +34,7 @@ type uimodel struct {
 	textarea    textarea.Model
 	senderStyle lipgloss.Style
 	ollama      *ollamaconnector.Settings
+	uid         string
 	err         error
 }
 
@@ -56,7 +58,7 @@ func initialModel(llm *ollamaconnector.Settings) uimodel {
 	vp.SetContent(`Welcome to a system configuration prompt.`)
 
 	ta.KeyMap.InsertNewline.SetEnabled(false)
-
+	uid, _ := user.Current()
 	return uimodel{
 		textarea:    ta,
 		messages:    []string{},
@@ -64,6 +66,7 @@ func initialModel(llm *ollamaconnector.Settings) uimodel {
 		senderStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("5")),
 		err:         nil,
 		ollama:      llm,
+		uid:         uid.Username,
 	}
 }
 
@@ -105,7 +108,7 @@ func (m uimodel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				fmt.Println("An errror occured", err)
 				return m, nil
 			}
-			m.messages = append(m.messages, m.senderStyle.Render("You: ")+m.textarea.Value(),
+			m.messages = append(m.messages, m.senderStyle.Render(m.uid+": ")+m.textarea.Value(),
 				"Kowalski: "+resp.Response)
 			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(
 				strings.Join(m.messages, "\n")))

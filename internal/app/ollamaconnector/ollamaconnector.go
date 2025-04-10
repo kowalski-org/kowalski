@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/mslacken/kowalski/internal/pkg/templates"
 )
 
 var emblength *int
@@ -101,8 +99,9 @@ type ModelInfo struct {
 func (settings Settings) SendTask(msg string) (resp *TaskResponse, err error) {
 	req := TaskRequest{
 		Prompt: msg,
-		System: templates.SystemPrompt,
-		Model:  settings.Model,
+		// System: templates.SystemPrompt,
+		Model:   settings.Model,
+		Options: map[string]any{"Temperature": 0},
 	}
 	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/generate"
 	js, err := json.Marshal(req)
