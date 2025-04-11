@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/user"
 	"strings"
+	"sync"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -15,10 +16,13 @@ import (
 
 const gap = "\n\n"
 
+var uiProc *tea.Program
+
 func Chat(llm *ollamaconnector.Settings) error {
 	uimodel := initialModel(llm)
-	p := tea.NewProgram(uimodel)
-	if _, err := p.Run(); err != nil {
+	uiProc = tea.NewProgram(&uimodel)
+	if _, err := uiProc.Run(); err != nil {
+
 		return err
 	}
 	return nil
@@ -30,11 +34,14 @@ type (
 
 type uimodel struct {
 	viewport    viewport.Model
-	messages    []string
+	inputs      []string
+	answer      string
 	textarea    textarea.Model
 	senderStyle lipgloss.Style
 	ollama      *ollamaconnector.Settings
 	uid         string
+	mutex       sync.Mutex
+	isRunning   bool
 	err         error
 }
 
@@ -61,7 +68,7 @@ func initialModel(llm *ollamaconnector.Settings) uimodel {
 	uid, _ := user.Current()
 	return uimodel{
 		textarea:    ta,
-		messages:    []string{},
+		inputs:      []string{},
 		viewport:    vp,
 		senderStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("5")),
 		err:         nil,
@@ -70,11 +77,11 @@ func initialModel(llm *ollamaconnector.Settings) uimodel {
 	}
 }
 
-func (m uimodel) Init() tea.Cmd {
+func (m *uimodel) Init() tea.Cmd {
 	return textarea.Blink
 }
 
-func (m uimodel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *uimodel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		tiCmd tea.Cmd
 		vpCmd tea.Cmd
@@ -89,9 +96,9 @@ func (m uimodel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea.SetWidth(msg.Width)
 		m.viewport.Height = msg.Height - m.textarea.Height() - lipgloss.Height(gap)
 
-		if len(m.messages) > 0 {
+		if len(m.inputs) > 0 {
 			// Wrap content before setting it.
-			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.messages, "\n")))
+			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.inputs, "\n")))
 		}
 		m.viewport.GotoBottom()
 	case tea.KeyMsg:
@@ -100,29 +107,21 @@ func (m uimodel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fmt.Println(m.textarea.Value())
 			return m, tea.Quit
 		case tea.KeyEnter:
-			m.messages = append(m.messages, m.senderStyle.Render(m.uid+": ")+m.textarea.Value(),
-				"Kowalski: ")
-			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(
-				strings.Join(m.messages, "\n")))
-			m.textarea.Reset()
-			context, err := database.GetContext(m.textarea.Value(), []string{})
-			if err != nil {
-				m.err = err
-				fmt.Println("An errror occured", err)
-				return m, nil
-			}
-			prompt := strings.Join([]string{context, m.textarea.Value()}, "\n")
-			ch := make(chan *ollamaconnector.TaskResponse)
-			go m.ollama.SendTaskStream(prompt, ch)
-			ollamaResp := []string{}
-			for resp := range ch {
-				ollamaResp = append(ollamaResp, resp.Response)
+			if !m.isRunning {
+				m.inputs = append(m.inputs, m.senderStyle.Render(m.uid+": ")+m.textarea.Value())
+				m.answer = "Kowalski: "
 				m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(
-					strings.Join(m.messages, "\n") + strings.Join(ollamaResp, "")))
-			}
+					strings.Join(m.inputs, "\n")))
+				m.textarea.Reset()
+				m.TalkLLMBackground(m.textarea.Value())
 
-			m.viewport.GotoBottom()
+				m.viewport.GotoBottom()
+			}
 		}
+	case LLMAns:
+		m.answer += string(msg)
+		m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(
+			strings.Join(append(m.inputs, m.answer), "\n")))
 
 	// We handle errors just like any other message
 	case errMsg:
@@ -133,11 +132,40 @@ func (m uimodel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(tiCmd, vpCmd)
 }
 
-func (m uimodel) View() string {
+func (m *uimodel) View() string {
 	return fmt.Sprintf(
 		"%s%s%s",
 		m.viewport.View(),
 		gap,
 		m.textarea.View(),
 	)
+}
+
+type LLMAns string
+
+func (m *uimodel) TalkLLMBackground(msg string) error {
+	if m.isRunning {
+		return nil
+	}
+	m.mutex.Lock()
+	m.isRunning = true
+	m.mutex.Unlock()
+	context, err := database.GetContext(msg, []string{})
+	if err != nil {
+		m.err = err
+		fmt.Println("An errror occured", err)
+		return nil
+	}
+	ch := make(chan *ollamaconnector.TaskResponse)
+	go m.ollama.SendTaskStream(context, ch)
+	go func() {
+		for resp := range ch {
+			uiProc.Send(LLMAns(resp.Response))
+		}
+		m.mutex.Lock()
+		m.inputs = append(m.inputs, m.answer)
+		m.isRunning = false
+		m.mutex.Unlock()
+	}()
+	return nil
 }

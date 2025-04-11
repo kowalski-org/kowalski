@@ -157,6 +157,7 @@ func (settings Settings) SendTaskStream(msg string, resp chan *TaskResponse) (er
 	close(resp)
 	return
 }
+
 func (settings Settings) GetEmbeddings(emb []string) (*EmbeddingResponse, error) {
 	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/embed"
 	req := EmbeddingRequest{
