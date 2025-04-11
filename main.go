@@ -21,7 +21,7 @@ THE SOFTWARE.
 */
 package main
 
-import "github.com/mslacken/kowalski/cmd"
+import "github.com/openSUSE/kowalski/cmd"
 
 func main() {
 	cmd.Execute()

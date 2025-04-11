@@ -5,8 +5,8 @@ import (
 	"log"
 	"maps"
 
-	"github.com/mslacken/kowalski/internal/pkg/database"
-	"github.com/mslacken/kowalski/internal/pkg/docbook"
+	"github.com/openSUSE/kowalski/internal/pkg/database"
+	"github.com/openSUSE/kowalski/internal/pkg/docbook"
 	"github.com/spf13/cobra"
 )
 

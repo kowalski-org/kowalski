@@ -11,7 +11,7 @@ import (
 
 	"dario.cat/mergo"
 	"github.com/beevik/etree"
-	"github.com/mslacken/kowalski/internal/pkg/information"
+	"github.com/openSUSE/kowalski/internal/pkg/information"
 )
 
 type Docbook struct {

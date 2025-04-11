@@ -4,9 +4,9 @@ import (
 	"log"
 	"math/rand"
 
-	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
-	"github.com/mslacken/kowalski/internal/pkg/docbook"
-	"github.com/mslacken/kowalski/internal/pkg/information"
+	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
+	"github.com/openSUSE/kowalski/internal/pkg/docbook"
+	"github.com/openSUSE/kowalski/internal/pkg/information"
 	"github.com/ostafen/clover/v2/document"
 	"github.com/ostafen/clover/v2/query"
 )

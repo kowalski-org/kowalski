@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
-	"github.com/mslacken/kowalski/internal/pkg/templates"
+	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
+	"github.com/openSUSE/kowalski/internal/pkg/templates"
 )
 
 type RenderData struct {

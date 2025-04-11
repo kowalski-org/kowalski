@@ -10,8 +10,8 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
-	"github.com/mslacken/kowalski/internal/pkg/database"
+	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
+	"github.com/openSUSE/kowalski/internal/pkg/database"
 )
 
 const gap = "\n\n"

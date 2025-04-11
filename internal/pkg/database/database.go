@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/DataIntelligenceCrew/go-faiss"
-	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
+	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
 	"github.com/ostafen/clover/v2"
 	"github.com/ostafen/clover/v2/document"
 	"github.com/ostafen/clover/v2/query"

@@ -11,7 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/mslacken/kowalski/internal/pkg/templates"
+	"github.com/openSUSE/kowalski/internal/pkg/templates"
 	"github.com/spf13/viper"
 )
 

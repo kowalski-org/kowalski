@@ -1,26 +1,27 @@
-module github.com/mslacken/kowalski
+module github.com/openSUSE/kowalski
 
 go 1.21.0
 
 toolchain go1.24.1
 
 require (
+	dario.cat/mergo v1.0.1
+	github.com/DataIntelligenceCrew/go-faiss v0.2.0
+	github.com/Masterminds/sprig/v3 v3.3.0
+	github.com/beevik/etree v1.5.0
 	github.com/charmbracelet/bubbles v0.20.0
 	github.com/charmbracelet/bubbletea v1.1.0
 	github.com/charmbracelet/lipgloss v0.13.0
+	github.com/ostafen/clover/v2 v2.0.0-alpha.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.0
 )
 
 require (
-	dario.cat/mergo v1.0.1 // indirect
-	github.com/DataIntelligenceCrew/go-faiss v0.2.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.0 // indirect
-	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/beevik/etree v1.5.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/charmbracelet/x/ansi v0.2.3 // indirect
@@ -51,7 +52,6 @@ require (
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
-	github.com/ostafen/clover/v2 v2.0.0-alpha.3 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect

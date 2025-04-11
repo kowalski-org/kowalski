@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mslacken/kowalski/internal/app/chat"
-	"github.com/mslacken/kowalski/internal/app/ollamaconnector"
-	"github.com/mslacken/kowalski/internal/pkg/database"
+	"github.com/openSUSE/kowalski/internal/app/chat"
+	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
+	"github.com/openSUSE/kowalski/internal/pkg/database"
 	"github.com/spf13/cobra"
 )
 

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	chatcmd "github.com/mslacken/kowalski/cmd/chat"
-	databasecmd "github.com/mslacken/kowalski/cmd/database"
+	chatcmd "github.com/openSUSE/kowalski/cmd/chat"
+	databasecmd "github.com/openSUSE/kowalski/cmd/database"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
