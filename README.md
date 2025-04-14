@@ -1,5 +1,5 @@
-# Kowlaski
-Kowalksi is an AI which helps to configure your system
+# Kowalski
+Kowalski is an AI which helps to configure your system
 
 ## Installation
 

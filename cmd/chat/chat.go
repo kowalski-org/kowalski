@@ -29,13 +29,17 @@ var reqCmd = &cobra.Command{
 	Use:   "req",
 	Short: "send request from commandline",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		context, err := database.GetContext(args[0], []string{})
+		sett := ollamaconnector.Ollama()
+		db, err := database.New()
+		if err != nil {
+			return err
+		}
+		context, err := db.GetContext(args[0], []string{}, sett.ContextLength)
 		if err != nil {
 			return err
 		}
 		prompt := strings.Join([]string{context, args[0]}, "\n")
 		fmt.Println("Prompt:", prompt)
-		sett := ollamaconnector.Ollama()
 		ch := make(chan *ollamaconnector.TaskResponse)
 		go sett.SendTaskStream(prompt, ch)
 		for resp := range ch {
