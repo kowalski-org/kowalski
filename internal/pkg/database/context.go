@@ -23,7 +23,7 @@ type SystemInfo struct {
 const maxdirentries = 10
 const filemaxsize = 2048
 
-func GetContext(msg string, collections []string) (context string, err error) {
+func (kn Knowledge) GetContext(msg string, collections []string, contextSize int) (context string, err error) {
 	funcMap := template.FuncMap{}
 	for key, value := range sprig.TxtFuncMap() {
 		funcMap[key] = value
@@ -34,12 +34,7 @@ func GetContext(msg string, collections []string) (context string, err error) {
 		return "", err
 	}
 	context += buf.String()
-	db, err := New()
-	defer db.Close()
-	if err != nil {
-		return "", err
-	}
-	infos, err := db.GetInfos(msg, collections)
+	infos, err := kn.GetInfos(msg, collections)
 	if err != nil {
 		return "", err
 	}
@@ -89,6 +84,10 @@ func GetContext(msg string, collections []string) (context string, err error) {
 					}
 				}
 			}
+		}
+		// check for context window
+		if len(context)+4*len(msg) > contextSize {
+			break
 		}
 	}
 	return

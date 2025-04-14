@@ -10,18 +10,22 @@ import (
 	"time"
 )
 
+// context and embeeing lenths shouldn't change so creat global
+// var for that
 var emblength *int
+var contlength *int
 
 type Settings struct {
-	Model           string
+	LLMModel        string
 	EmbeddingModel  string
 	OllamaURL       string
 	EmbeddingLength int
+	ContextLength   int
 }
 
 func OllamaOffline() Settings {
 	return Settings{
-		Model:          "gemma3:4b",
+		LLMModel:       "gemma3:4b",
 		EmbeddingModel: "nomic-embed-text",
 		OllamaURL:      "http://localhost:11434/api/",
 	}
@@ -30,8 +34,12 @@ func OllamaOffline() Settings {
 func Ollama() Settings {
 	sett := OllamaOffline()
 	if emblength == nil {
-		length, _ := sett.GetEmbeddingSize()
-		emblength = &length
+		emblength = new(int)
+		*emblength, _ = sett.GetEmbeddingSize()
+	}
+	if contlength == nil {
+		contlength = new(int)
+		*contlength, _ = sett.GetContextSize()
 	}
 	sett.EmbeddingLength = *emblength
 	return sett
@@ -100,7 +108,7 @@ func (settings Settings) SendTask(msg string) (resp *TaskResponse, err error) {
 	req := TaskRequest{
 		Prompt: msg,
 		// System: templates.SystemPrompt,
-		Model:   settings.Model,
+		Model:   settings.LLMModel,
 		Options: map[string]any{"Temperature": 0},
 		Stream:  false,
 	}
@@ -112,11 +120,11 @@ func (settings Settings) SendTask(msg string) (resp *TaskResponse, err error) {
 	client := http.Client{}
 	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
+		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLMModel, err)
 	}
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
+		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLMModel, err)
 	}
 	defer httpResp.Body.Close()
 	ollamaResp := TaskResponse{}
@@ -127,7 +135,7 @@ func (settings Settings) SendTaskStream(msg string, resp chan *TaskResponse) (er
 	req := TaskRequest{
 		Prompt: msg,
 		// System: templates.SystemPrompt,
-		Model:   settings.Model,
+		Model:   settings.LLMModel,
 		Options: map[string]any{"Temperature": 0},
 		Stream:  true,
 	}
@@ -139,11 +147,11 @@ func (settings Settings) SendTaskStream(msg string, resp chan *TaskResponse) (er
 	client := http.Client{}
 	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
 	if err != nil {
-		return fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
+		return fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLMModel, err)
 	}
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
-		return fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
+		return fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLMModel, err)
 	}
 	dec := json.NewDecoder(httpResp.Body)
 	for {
@@ -187,8 +195,11 @@ func (settings Settings) GetEmbeddings(emb []string) (*EmbeddingResponse, error)
 	return &ollamaResp, err
 }
 
+/*
+Get the embeddig size
+*/
 func (settings Settings) GetEmbeddingSize() (int, error) {
-	info, err := settings.GetEmbeddingInfo()
+	info, err := settings.GetModelInfo(settings.EmbeddingModel)
 	if err != nil {
 		return 0, err
 	}
@@ -200,15 +211,36 @@ func (settings Settings) GetEmbeddingSize() (int, error) {
 		// return 0, fmt.Errorf("couldn't determine embdding length of %s", modelArch)
 	}
 	return 0, fmt.Errorf("couldn't get model info")
-
 }
-func (settings Settings) GetEmbeddingInfo() (*ModelInfo, error) {
+
+/*
+Get the context size
+*/
+func (settings Settings) GetContextSize() (int, error) {
+	info, err := settings.GetModelInfo(settings.LLMModel)
+	if err != nil {
+		return 0, err
+	}
+	if modelArch, ok := info.ModelInfo["general.architecture"].(string); ok {
+		// Follwing if clause doesn't work, I don't know why
+		// if _, ok_l := info.ModelInfo["nomic-bert.embedding_length"].(int32); ok_l {
+		return int(info.ModelInfo[modelArch+".embedding_length"].(float64)), nil
+		// }
+		// return 0, fmt.Errorf("couldn't determine embdding length of %s", modelArch)
+	}
+	return 0, fmt.Errorf("couldn't get model info")
+}
+
+/*
+Get the basic information of the model via the REST API from ollma
+*/
+func (settings Settings) GetModelInfo(name string) (*ModelInfo, error) {
 	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/show"
 	var req = struct {
 		Model   string `json:"model,omitempty"`
 		Verbose bool   `json:"verbos,omitempty"`
 	}{
-		Model:   settings.EmbeddingModel,
+		Model:   name,
 		Verbose: false,
 	}
 	js, err := json.Marshal(req)
@@ -231,24 +263,4 @@ func (settings Settings) GetEmbeddingInfo() (*ModelInfo, error) {
 		return nil, err
 	}
 	return &info, nil
-}
-
-func (settings Settings) GetReq(req GenerateReq) (str string, err error) {
-	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/generate"
-	js, err := json.Marshal(req)
-	if err != nil {
-		return "", fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
-	}
-	client := http.Client{}
-	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
-	if err != nil {
-		return "", fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
-	}
-	httpResp, err := client.Do(httpReq)
-	if err != nil {
-		return "", fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.Model, err)
-	}
-	defer httpResp.Body.Close()
-	bodyBytes, _ := io.ReadAll(httpResp.Body)
-	return string(bodyBytes), nil
 }
