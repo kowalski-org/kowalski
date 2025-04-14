@@ -18,7 +18,6 @@ var chatCmd = &cobra.Command{
 He has access to knowledge bases and can access your files
 for better answers.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// modelname, _ := cmd.PersistentFlags().GetString("model")
 		settings := ollamaconnector.Ollama()
 		// settings.Model = modelname
 		chat.Chat(&settings)
@@ -52,7 +51,6 @@ var reqCmd = &cobra.Command{
 }
 
 func init() {
-	// chatCmd.PersistentFlags().StringP("model", "m", ollamaconnector.Ollama().EmbeddingModel, "model name")
 	chatCmd.AddCommand(reqCmd)
 }
 
