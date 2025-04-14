@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/charmbracelet/log"
+	"github.com/spf13/viper"
 	"io"
 	"net/http"
 	"strings"
@@ -16,7 +18,7 @@ var emblength *int
 var contlength *int
 
 type Settings struct {
-	LLMModel        string
+	LLM             string
 	EmbeddingModel  string
 	OllamaURL       string
 	EmbeddingLength int
@@ -25,9 +27,9 @@ type Settings struct {
 
 func OllamaOffline() Settings {
 	return Settings{
-		LLMModel:       "gemma3:4b",
-		EmbeddingModel: "nomic-embed-text",
-		OllamaURL:      "http://localhost:11434/api/",
+		LLM:            viper.GetString("llm"),
+		EmbeddingModel: viper.GetString("embedding"),
+		OllamaURL:      viper.GetString("URL"),
 	}
 }
 
@@ -37,11 +39,13 @@ func Ollama() Settings {
 		emblength = new(int)
 		*emblength, _ = sett.GetEmbeddingSize()
 	}
+	sett.EmbeddingLength = *emblength
 	if contlength == nil {
 		contlength = new(int)
 		*contlength, _ = sett.GetContextSize()
 	}
-	sett.EmbeddingLength = *emblength
+	sett.ContextLength = *contlength
+	log.Debugf("model/size: %s/%d embedding/size: %s/%d URL: %s", sett.LLM, sett.ContextLength, sett.EmbeddingModel, sett.EmbeddingLength, sett.OllamaURL)
 	return sett
 }
 
@@ -106,9 +110,8 @@ type ModelInfo struct {
 
 func (settings Settings) SendTask(msg string) (resp *TaskResponse, err error) {
 	req := TaskRequest{
-		Prompt: msg,
-		// System: templates.SystemPrompt,
-		Model:   settings.LLMModel,
+		Prompt:  msg,
+		Model:   settings.LLM,
 		Options: map[string]any{"Temperature": 0},
 		Stream:  false,
 	}
@@ -120,11 +123,11 @@ func (settings Settings) SendTask(msg string) (resp *TaskResponse, err error) {
 	client := http.Client{}
 	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLMModel, err)
+		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLM, err)
 	}
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLMModel, err)
+		return nil, fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLM, err)
 	}
 	defer httpResp.Body.Close()
 	ollamaResp := TaskResponse{}
@@ -135,7 +138,7 @@ func (settings Settings) SendTaskStream(msg string, resp chan *TaskResponse) (er
 	req := TaskRequest{
 		Prompt: msg,
 		// System: templates.SystemPrompt,
-		Model:   settings.LLMModel,
+		Model:   settings.LLM,
 		Options: map[string]any{"Temperature": 0},
 		Stream:  true,
 	}
@@ -147,11 +150,12 @@ func (settings Settings) SendTaskStream(msg string, resp chan *TaskResponse) (er
 	client := http.Client{}
 	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
 	if err != nil {
-		return fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLMModel, err)
+		log.Debug("URL: %s Model: %s Error: %v", URL, settings.LLM, err)
+		return fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLM, err)
 	}
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
-		return fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLMModel, err)
+		return fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLM, err)
 	}
 	dec := json.NewDecoder(httpResp.Body)
 	for {
@@ -204,11 +208,7 @@ func (settings Settings) GetEmbeddingSize() (int, error) {
 		return 0, err
 	}
 	if modelArch, ok := info.ModelInfo["general.architecture"].(string); ok {
-		// Follwing if clause doesn't work, I don't know why
-		// if _, ok_l := info.ModelInfo["nomic-bert.embedding_length"].(int32); ok_l {
 		return int(info.ModelInfo[modelArch+".embedding_length"].(float64)), nil
-		// }
-		// return 0, fmt.Errorf("couldn't determine embdding length of %s", modelArch)
 	}
 	return 0, fmt.Errorf("couldn't get model info")
 }
@@ -217,16 +217,14 @@ func (settings Settings) GetEmbeddingSize() (int, error) {
 Get the context size
 */
 func (settings Settings) GetContextSize() (int, error) {
-	info, err := settings.GetModelInfo(settings.LLMModel)
+	info, err := settings.GetModelInfo(settings.LLM)
 	if err != nil {
 		return 0, err
 	}
 	if modelArch, ok := info.ModelInfo["general.architecture"].(string); ok {
-		// Follwing if clause doesn't work, I don't know why
-		// if _, ok_l := info.ModelInfo["nomic-bert.embedding_length"].(int32); ok_l {
-		return int(info.ModelInfo[modelArch+".embedding_length"].(float64)), nil
-		// }
-		// return 0, fmt.Errorf("couldn't determine embdding length of %s", modelArch)
+		fmt.Println(info.ModelInfo)
+		fmt.Println(modelArch + ".context_length")
+		return int(info.ModelInfo[modelArch+".context_length"].(float64)), nil
 	}
 	return 0, fmt.Errorf("couldn't get model info")
 }
