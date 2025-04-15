@@ -1,18 +1,25 @@
 package information
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
+	"os"
 	"reflect"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
 	"github.com/openSUSE/kowalski/internal/pkg/templates"
 )
+
+const maxdirentries = 10
+const filemaxsize = 2048
 
 type RenderData struct {
 	Level int
@@ -36,8 +43,61 @@ type Section struct {
 	Commands     []string   `yaml:"Commands,omitempty"`
 }
 
+func (info *Section) RenderWithFiles(args ...any) (ret string) {
+	fileFunc := map[string]func(string) string{
+		"FileContext": func(in string) (out string) {
+			if len(info.Files) != 0 {
+				out += "On the actual system we have following files and directories:"
+				for _, file := range info.Files {
+					fileStat, err := os.Stat(file)
+					if errors.Is(err, os.ErrNotExist) {
+						if strings.HasSuffix(file, "/") {
+							out += fmt.Sprintf("* directory %s doesn't exist on the system\n", file)
+						} else {
+							out += fmt.Sprintf("* file %s doesn't exist on the system\n", file)
+						}
+					}
+					if fileStat.IsDir() {
+						entries, _ := os.ReadDir(file)
+						if len(entries) < maxdirentries {
+							var strEnt []string
+							for _, ent := range entries {
+								strEnt = append(strEnt, ent.Name())
+							}
+							out += fmt.Sprintf("* directory %s has following entries %s", file, strings.Join(strEnt, ","))
+						} else {
+							out += fmt.Sprintf("* directory %s has more than %d entries", file, maxdirentries)
+
+						}
+					} else {
+						if fileStat.Size() < filemaxsize {
+							readFile, _ := os.Open(os.Args[1])
+							if err != nil {
+								out += fmt.Sprintf("* file %s couldn't be opened", file)
+							}
+							fileScanner := bufio.NewScanner(readFile)
+							fileScanner.Split(bufio.ScanLines)
+							fileScanner.Scan()
+							if utf8.ValidString(fileScanner.Text()) {
+								out += fmt.Sprintf("* file %s has following content: ```\n%s", file, fileScanner.Text())
+								for fileScanner.Scan() {
+									out += fileScanner.Text()
+								}
+							}
+						} else {
+							out += fmt.Sprintf("* file %s exists and larger than %d bytes", file, filemaxsize)
+						}
+					}
+				}
+			}
+			return
+		}}
+	return info.Render(fileFunc)
+}
+
 func (info *Section) Render(args ...any) string {
 	level := 0
+	funcMap := sprig.FuncMap()
 	tmpl := templates.RenderInfo
 	for _, arg := range args {
 		switch t := arg.(type) {
@@ -45,16 +105,15 @@ func (info *Section) Render(args ...any) string {
 			tmpl = t
 		case int:
 			level = t
+		case map[string]func(string) string:
+			for key, val := range t {
+				funcMap[key] = val
+			}
 		}
 	}
-	funcMap := template.FuncMap{
-		"RenderSubsections": info.RenderSubsections,
-		"Section": func() string {
-			return strings.Repeat("#", level)
-		},
-	}
-	for key, value := range sprig.TxtFuncMap() {
-		funcMap[key] = value
+	funcMap["RenderSubsections"] = info.RenderSubsections
+	funcMap["Section"] = func() string {
+		return strings.Repeat("#", level)
 	}
 	template, err := template.New("sections").Funcs(funcMap).Parse(tmpl)
 	if err != nil {

@@ -9,6 +9,8 @@ const RenderInfo = `
 {{ RenderSubsections .Level }}
 `
 
-const SystemPrompt = `You are an helpfull assistant for a {{ .Name }} {{ .Version }} system.
+const Prompt = `Your name is Kowlaski and you are a helpfull assistant for a {{ .Name }} {{ .Version }} system.
 Answer in short sentences.
-`
+{{ .Context }}
+The user wants help with following task:
+{{ .Task }}`

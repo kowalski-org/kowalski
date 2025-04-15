@@ -1,99 +1,63 @@
 package database
 
 import (
-	"bufio"
 	"bytes"
-	"errors"
-	"fmt"
 	"os"
-	"strings"
 	"text/template"
-	"unicode/utf8"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/charmbracelet/log"
 	"github.com/openSUSE/kowalski/internal/pkg/templates"
 	"github.com/spf13/viper"
 )
 
-type SystemInfo struct {
+type PromptInfo struct {
 	Name    string
 	Version string
+	Task    string
+	Context string
 }
 
-const maxdirentries = 10
-const filemaxsize = 2048
-
-func (kn Knowledge) GetContext(msg string, collections []string, contextSize int) (context string, err error) {
-	funcMap := template.FuncMap{}
-	for key, value := range sprig.TxtFuncMap() {
-		funcMap[key] = value
-	}
+func (kn Knowledge) GetContext(msg string, collections []string, maxSize int) (string, error) {
+	log.Debugf("Getting context(%d) for %s in %s\n", maxSize, msg, collections)
+	promptInfo := GetSystemInfo()
+	promptInfo.Task = msg
+	funcMap := sprig.FuncMap()
 	var buf bytes.Buffer
-	sysinfo, err := template.New("sysinfo").Funcs(funcMap).Parse(templates.SystemPrompt)
-	if err := sysinfo.Execute(&buf, GetSystemInfo()); err != nil {
+	sysinfo, err := template.New("sysinfo").Funcs(funcMap).Parse(templates.Prompt)
+	if err != nil {
 		return "", err
 	}
-	context += buf.String()
+	if err = sysinfo.Execute(&buf, promptInfo); err != nil {
+		return "", err
+	}
 	infos, err := kn.GetInfos(msg, collections)
 	if err != nil {
 		return "", err
 	}
+	contextSize := buf.Len()
+	renderedCont := ""
 	for _, info := range infos {
-		context += "This help document may be related to the problem:\n"
-		context += info.Section.Render()
-		if len(info.Files) != 0 {
-			context += "On the actual system we have following files and directories:"
-			for _, file := range info.Files {
-				fileStat, err := os.Stat(file)
-				if errors.Is(err, os.ErrNotExist) {
-					if strings.HasSuffix(file, "/") {
-						context += fmt.Sprintf("* directory %s doesn't exist on the system\n", file)
-					} else {
-						context += fmt.Sprintf("* file %s doesn't exist on the system\n", file)
-					}
-				}
-				if fileStat.IsDir() {
-					entries, _ := os.ReadDir(file)
-					if len(entries) < maxdirentries {
-						var strEnt []string
-						for _, ent := range entries {
-							strEnt = append(strEnt, ent.Name())
-						}
-						context += fmt.Sprintf("* directory %s has following entries %s", file, strings.Join(strEnt, ","))
-					} else {
-						context += fmt.Sprintf("* directory %s has more than %d entries", file, maxdirentries)
-
-					}
-				} else {
-					if fileStat.Size() < filemaxsize {
-						readFile, err := os.Open(os.Args[1])
-						if err != nil {
-							return "", err
-						}
-						fileScanner := bufio.NewScanner(readFile)
-						fileScanner.Split(bufio.ScanLines)
-						fileScanner.Scan()
-						if utf8.ValidString(fileScanner.Text()) {
-							context += fmt.Sprintf("* file %s has following content: ```\n%s", file, fileScanner.Text())
-							for fileScanner.Scan() {
-								context += fileScanner.Text()
-							}
-						}
-					} else {
-						context += fmt.Sprintf("* file %s exists and larger than %d bytes", file, filemaxsize)
-					}
-				}
-			}
-		}
-		// check for context window
-		if len(context)+4*len(msg) > contextSize {
+		renderedCont += "This help document may be related to the problem:\n"
+		renderedCont += info.Section.RenderWithFiles()
+		// check for renderedCont window
+		if len(renderedCont)+4*contextSize > maxSize {
 			break
 		}
 	}
-	return
+	buf.Reset()
+	sysinfo, err = sysinfo.Parse(templates.Prompt)
+	if err != nil {
+		return "", err
+	}
+	promptInfo.Context = renderedCont
+	if err = sysinfo.Execute(&buf, promptInfo); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
-func GetSystemInfo() (sysinfo SystemInfo) {
+func GetSystemInfo() (sysinfo PromptInfo) {
 	osRel := viper.New()
 	osRel.SetConfigType("env")
 	osRel.SetDefault("NAME", "Unknown linux")
@@ -101,7 +65,7 @@ func GetSystemInfo() (sysinfo SystemInfo) {
 	if fh, err := os.Open("/etc/os-release"); err == nil {
 		osRel.ReadConfig(fh)
 	}
-	return SystemInfo{
+	return PromptInfo{
 		Name:    osRel.GetString("NAME"),
 		Version: osRel.GetString("VERSION"),
 	}

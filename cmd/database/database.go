@@ -2,7 +2,7 @@ package databasecmd
 
 import (
 	"fmt"
-	"log"
+	"github.com/charmbracelet/log"
 	"maps"
 
 	"github.com/openSUSE/kowalski/internal/pkg/database"
@@ -87,18 +87,18 @@ var databaseList = &cobra.Command{
 			if colls, err := db.ListCollections(); err != nil {
 				return err
 			} else {
-				fmt.Printf("Collections:\n")
+				log.Info("Collections:\n")
 				for _, col := range colls {
-					fmt.Printf("%s\n", col)
+					log.Infof("%s\n", col)
 				}
 			}
 		} else {
 			if docs, err := db.List(args[0]); err != nil {
 				return err
 			} else {
-				fmt.Printf("Documents:\n")
+				log.Infof("Documents:\n")
 				for _, doc := range docs {
-					fmt.Printf("%s\n", doc)
+					log.Infof("%s\n", doc)
 				}
 			}
 		}

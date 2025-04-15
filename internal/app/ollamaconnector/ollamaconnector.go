@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/charmbracelet/log"
-	"github.com/spf13/viper"
-	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/charmbracelet/log"
+	"github.com/spf13/viper"
 )
 
 // context and embeeing lenths shouldn't change so creat global
@@ -45,7 +45,6 @@ func Ollama() Settings {
 		*contlength, _ = sett.GetContextSize()
 	}
 	sett.ContextLength = *contlength
-	log.Debugf("model/size: %s/%d embedding/size: %s/%d URL: %s", sett.LLM, sett.ContextLength, sett.EmbeddingModel, sett.EmbeddingLength, sett.OllamaURL)
 	return sett
 }
 
@@ -150,12 +149,11 @@ func (settings Settings) SendTaskStream(msg string, resp chan *TaskResponse) (er
 	client := http.Client{}
 	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
 	if err != nil {
-		log.Debug("URL: %s Model: %s Error: %v", URL, settings.LLM, err)
-		return fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLM, err)
+		return fmt.Errorf("Error when creating Request: URL: %s Model: %s Error: %v", URL, settings.LLM, err)
 	}
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
-		return fmt.Errorf("URL: %s Model: %s Error: %v", URL, settings.LLM, err)
+		return fmt.Errorf("Error during request retrival: URL: %s Model: %s Error: %v", URL, settings.LLM, err)
 	}
 	dec := json.NewDecoder(httpResp.Body)
 	for {
@@ -193,8 +191,7 @@ func (settings Settings) GetEmbeddings(emb []string) (*EmbeddingResponse, error)
 	var ollamaResp EmbeddingResponse
 	err = json.NewDecoder(httpResp.Body).Decode(&ollamaResp)
 	if err != nil {
-		bodyBytes, _ := io.ReadAll(httpResp.Body)
-		fmt.Printf("Body\n %s\n", string(bodyBytes))
+		return nil, fmt.Errorf("couldn't decode respones: %s", err)
 	}
 	return &ollamaResp, err
 }
@@ -209,6 +206,8 @@ func (settings Settings) GetEmbeddingSize() (int, error) {
 	}
 	if modelArch, ok := info.ModelInfo["general.architecture"].(string); ok {
 		return int(info.ModelInfo[modelArch+".embedding_length"].(float64)), nil
+	} else {
+		log.Warnf("couldn't get embedding size for %s", modelArch)
 	}
 	return 0, fmt.Errorf("couldn't get model info")
 }
@@ -222,9 +221,9 @@ func (settings Settings) GetContextSize() (int, error) {
 		return 0, err
 	}
 	if modelArch, ok := info.ModelInfo["general.architecture"].(string); ok {
-		fmt.Println(info.ModelInfo)
-		fmt.Println(modelArch + ".context_length")
 		return int(info.ModelInfo[modelArch+".context_length"].(float64)), nil
+	} else {
+		log.Warnf("couldn't get context size for %s", modelArch)
 	}
 	return 0, fmt.Errorf("couldn't get model info")
 }

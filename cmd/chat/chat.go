@@ -1,9 +1,9 @@
 package chatcmd
 
 import (
-	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/log"
 	"github.com/openSUSE/kowalski/internal/app/chat"
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
 	"github.com/openSUSE/kowalski/internal/pkg/database"
@@ -19,7 +19,6 @@ He has access to knowledge bases and can access your files
 for better answers.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		settings := ollamaconnector.Ollama()
-		// settings.Model = modelname
 		chat.Chat(&settings)
 	},
 }
@@ -33,18 +32,19 @@ var reqCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		context, err := db.GetContext(args[0], []string{}, sett.ContextLength)
+		prompt, err := db.GetContext(args[0], []string{}, sett.ContextLength)
 		if err != nil {
 			return err
 		}
-		prompt := strings.Join([]string{context, args[0]}, "\n")
-		fmt.Println("Prompt:", prompt)
+		log.Infof("Prompt: %s", prompt)
 		ch := make(chan *ollamaconnector.TaskResponse)
+		respStr := []string{}
 		go sett.SendTaskStream(prompt, ch)
 		for resp := range ch {
-			fmt.Printf("%s", resp.Response)
+			respStr = append(respStr, resp.Response)
+			log.Debug(resp.Response)
 		}
-		fmt.Println()
+		log.Infof("Kowalski: %s", strings.Join(respStr, ``))
 		return nil
 	},
 	Args: cobra.MinimumNArgs(1),

@@ -82,6 +82,5 @@ func initConfig() {
 	}
 	if debug, _ := rootCmd.Flags().GetBool("debug"); debug {
 		log.SetLevel(log.DebugLevel)
-		log.Debug("debug messages enabled")
 	}
 }
