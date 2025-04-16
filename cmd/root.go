@@ -6,10 +6,11 @@ import (
 
 	chatcmd "github.com/openSUSE/kowalski/cmd/chat"
 	databasecmd "github.com/openSUSE/kowalski/cmd/database"
+	evaluatecmd "github.com/openSUSE/kowalski/internal/app/evaluate"
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
+	"github.com/openSUSE/kowalski/internal/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"runtime/debug"
 
 	"github.com/charmbracelet/log"
 )
@@ -58,6 +59,7 @@ func init() {
 	// when this action is called directly.
 	rootCmd.AddCommand(chatcmd.GetCommand())
 	rootCmd.AddCommand(databasecmd.GetCommand())
+	rootCmd.AddCommand(evaluatecmd.GetCommand())
 	rootCmd.AddCommand(versCmd)
 	// set the defaults
 	viper.SetDefault("llm", "gemma3:4b")
@@ -102,21 +104,5 @@ var versCmd = &cobra.Command{
 }
 
 func printVers() {
-	fmt.Printf("kowalski version: %s\n", Commit)
+	fmt.Printf("kowalski version: %s\n", version.Commit)
 }
-
-var Commit = func() string {
-	vers := "no version"
-	suffix := ""
-	if info, ok := debug.ReadBuildInfo(); ok {
-		for _, setting := range info.Settings {
-			if setting.Key == "vcs.revision" {
-				vers = setting.Value
-			}
-			if setting.Key == "vcs.modified" && setting.Value == "true" {
-				suffix = "-dirty"
-			}
-		}
-	}
-	return vers + suffix
-}()

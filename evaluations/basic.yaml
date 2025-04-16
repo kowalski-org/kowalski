@@ -1,0 +1,3 @@
+evaluations:
+  - name: "Install vim"
+    prompt: "I want to install vim"

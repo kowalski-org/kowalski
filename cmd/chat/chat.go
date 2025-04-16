@@ -1,7 +1,6 @@
 package chatcmd
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/log"
@@ -54,22 +53,8 @@ var reqCmd = &cobra.Command{
 	Hidden: true,
 }
 
-var runTests = &cobra.Command{
-	Use:   "test testfile1.yaml testfile2.yaml ...const",
-	Short: "Run tests given by files.",
-	Long: `Runs the tests given by the files and writes output to
-new files with .$ID, where $ID is as 8 digit HEX random number.
-So the input file foo.yaml will create an output like foo.yaml.abcd1234.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("run test")
-		return nil
-	},
-	Args: cobra.MinimumNArgs(1),
-}
-
 func init() {
 	chatCmd.AddCommand(reqCmd)
-	chatCmd.AddCommand(runTests)
 }
 
 func GetCommand() *cobra.Command {
