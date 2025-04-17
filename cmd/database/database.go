@@ -87,7 +87,7 @@ var databaseList = &cobra.Command{
 			if colls, err := db.ListCollections(); err != nil {
 				return err
 			} else {
-				log.Info("Collections:\n")
+				fmt.Printf("Collections:\n")
 				for _, col := range colls {
 					log.Infof("%s\n", col)
 				}
@@ -96,9 +96,9 @@ var databaseList = &cobra.Command{
 			if docs, err := db.List(args[0]); err != nil {
 				return err
 			} else {
-				log.Infof("Documents:\n")
+				fmt.Printf("Documents:\n")
 				for _, doc := range docs {
-					log.Infof("%s\n", doc)
+					fmt.Printf("%s %s\n", doc.Id, doc.Title)
 				}
 			}
 		}
