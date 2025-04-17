@@ -16,7 +16,6 @@ import (
 )
 
 var cfgFile string
-var ollamaSettings ollamaconnector.Settings
 var logLevel int
 
 // rootCmd represents the base command when called without any subcommands
@@ -48,23 +47,23 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	// set the defaults
+	viper.SetDefault("llm", "gemma3:4b")
+	viper.SetDefault("embedding", "nomic-embed-text")
+	viper.SetDefault("URL", "http://localhost:11434")
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.PersistentFlags().String("modell", viper.GetString("llm"), "LLM modell to be used for answers")
-	rootCmd.PersistentFlags().String("embedding", viper.GetString("embedding"), "embedding model for the knowledge database")
-	rootCmd.PersistentFlags().String("URL", viper.GetString("URL"), "base URL for ollama requests")
+	rootCmd.PersistentFlags().StringVar(&ollamaconnector.Ollamasettings.LLM, "modell", viper.GetString("llm"), "LLM modell to be used for answers")
+	rootCmd.PersistentFlags().StringVar(&ollamaconnector.Ollamasettings.EmbeddingModel, "embedding", viper.GetString("embedding"), "embedding model for the knowledge database")
+	rootCmd.PersistentFlags().StringVar(&ollamaconnector.Ollamasettings.OllamaURL, "URL", viper.GetString("URL"), "base URL for ollama requests")
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "turn on debugging messages")
 	// when this action is called directly.
 	rootCmd.AddCommand(chatcmd.GetCommand())
 	rootCmd.AddCommand(databasecmd.GetCommand())
 	rootCmd.AddCommand(evaluatecmd.GetCommand())
 	rootCmd.AddCommand(versCmd)
-	// set the defaults
-	viper.SetDefault("llm", "gemma3:4b")
-	viper.SetDefault("embedding", "nomic-embed-text")
-	viper.SetDefault("URL", "http://localhost:11434/api/")
 	rootCmd.Flags().BoolP("version", "v", false, "print version (git tag)")
 }
 

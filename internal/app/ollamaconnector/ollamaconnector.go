@@ -9,44 +9,18 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
-	"github.com/spf13/viper"
 )
 
-// context and embeeing lenths shouldn't change so creat global
-// var for that
-var emblength *int
-var contlength *int
-
 type Settings struct {
-	LLM             string
-	EmbeddingModel  string
-	OllamaURL       string
-	EmbeddingLength int
-	ContextLength   int
+	LLM            string
+	EmbeddingModel string
+	OllamaURL      string
+	embeddingSize  int
+	contextSize    int
+	info           ModelInfo
 }
 
-func OllamaOffline() Settings {
-	return Settings{
-		LLM:            viper.GetString("llm"),
-		EmbeddingModel: viper.GetString("embedding"),
-		OllamaURL:      viper.GetString("URL"),
-	}
-}
-
-func Ollama() Settings {
-	sett := OllamaOffline()
-	if emblength == nil {
-		emblength = new(int)
-		*emblength, _ = sett.GetEmbeddingSize()
-	}
-	sett.EmbeddingLength = *emblength
-	if contlength == nil {
-		contlength = new(int)
-		*contlength, _ = sett.GetContextSize()
-	}
-	sett.ContextLength = *contlength
-	return sett
-}
+var Ollamasettings Settings
 
 type TaskRequest struct {
 	Model   string         `json:"model"`
@@ -97,6 +71,7 @@ type TaskResponse struct {
 }
 
 type ModelInfo struct {
+	isSet         bool
 	License       string         `json:"license,omitempty"`
 	Modelfile     string         `json:"modelfile,omitempty"`
 	Parameters    string         `json:"parameters,omitempty"`
@@ -111,10 +86,10 @@ func (settings Settings) SendTask(msg string) (resp *TaskResponse, err error) {
 	req := TaskRequest{
 		Prompt:  msg,
 		Model:   settings.LLM,
-		Options: map[string]any{"Temperature": 0},
+		Options: map[string]any{"temperature": 0},
 		Stream:  false,
 	}
-	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/generate"
+	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/api/generate"
 	js, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't marshal message: %s", err)
@@ -138,10 +113,10 @@ func (settings Settings) SendTaskStream(msg string, resp chan *TaskResponse) (er
 		Prompt: msg,
 		// System: templates.SystemPrompt,
 		Model:   settings.LLM,
-		Options: map[string]any{"Temperature": 0},
+		Options: map[string]any{"temperature": 0},
 		Stream:  true,
 	}
-	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/generate"
+	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/api/generate"
 	js, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("couldn't marshal message: %s", err)
@@ -169,7 +144,7 @@ func (settings Settings) SendTaskStream(msg string, resp chan *TaskResponse) (er
 }
 
 func (settings Settings) GetEmbeddings(emb []string) (*EmbeddingResponse, error) {
-	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/embed"
+	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/api/embed"
 	req := EmbeddingRequest{
 		Input: emb,
 		Model: settings.EmbeddingModel,
@@ -199,43 +174,56 @@ func (settings Settings) GetEmbeddings(emb []string) (*EmbeddingResponse, error)
 /*
 Get the embeddig size
 */
-func (settings Settings) GetEmbeddingSize() (int, error) {
+func (settings *Settings) GetEmbeddingSize() int {
+	if settings.embeddingSize != 0 {
+		return settings.embeddingSize
+	}
 	info, err := settings.GetModelInfo(settings.EmbeddingModel)
 	if err != nil {
-		return 0, err
+		log.Warnf("couldn't get embedding size: %s", err)
+		return 0
 	}
 	if modelArch, ok := info.ModelInfo["general.architecture"].(string); ok {
-		return int(info.ModelInfo[modelArch+".embedding_length"].(float64)), nil
+		settings.embeddingSize = int(info.ModelInfo[modelArch+".embedding_length"].(float64))
+		return settings.embeddingSize
 	} else {
 		log.Warnf("couldn't get embedding size for %s", modelArch)
 	}
-	return 0, fmt.Errorf("couldn't get model info")
+	return 0
 }
 
 /*
 Get the context size
 */
-func (settings Settings) GetContextSize() (int, error) {
+func (settings *Settings) GetContextSize() int {
+	if settings.contextSize != 0 {
+		return settings.contextSize
+	}
 	info, err := settings.GetModelInfo(settings.LLM)
 	if err != nil {
-		return 0, err
+		log.Warnf("couldn't get context size: %s", err)
+		return 0
 	}
 	if modelArch, ok := info.ModelInfo["general.architecture"].(string); ok {
-		return int(info.ModelInfo[modelArch+".context_length"].(float64)), nil
+		settings.contextSize = int(info.ModelInfo[modelArch+".context_length"].(float64))
+		return settings.contextSize
 	} else {
 		log.Warnf("couldn't get context size for %s", modelArch)
 	}
-	return 0, fmt.Errorf("couldn't get model info")
+	return 0
 }
 
 /*
 Get the basic information of the model via the REST API from ollma
 */
 func (settings Settings) GetModelInfo(name string) (*ModelInfo, error) {
-	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/show"
+	if settings.info.isSet {
+		return &settings.info, nil
+	}
+	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/api/show"
 	var req = struct {
 		Model   string `json:"model,omitempty"`
-		Verbose bool   `json:"verbos,omitempty"`
+		Verbose bool   `json:"verbose,omitempty"`
 	}{
 		Model:   name,
 		Verbose: false,
@@ -254,10 +242,10 @@ func (settings Settings) GetModelInfo(name string) (*ModelInfo, error) {
 		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", URL, settings.EmbeddingModel, err)
 	}
 	defer httpResp.Body.Close()
-	var info ModelInfo
-	err = json.NewDecoder(httpResp.Body).Decode(&info)
+	err = json.NewDecoder(httpResp.Body).Decode(&settings.info)
 	if err != nil {
 		return nil, err
 	}
-	return &info, nil
+	settings.info.isSet = true
+	return &settings.info, nil
 }

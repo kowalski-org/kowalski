@@ -25,15 +25,14 @@ So the input file foo.yaml will create an output like foo.yaml.abcd1234.`,
 			return err
 		}
 		id := uuid.New()
-		sett := ollamaconnector.Ollama()
 		evaluationList := evaluate.EvalutaionList{
 			Id:        id.String(),
 			Version:   version.Commit,
-			LLM:       sett.LLM,
-			Embedding: sett.EmbeddingModel,
+			LLM:       ollamaconnector.Ollamasettings.LLM,
+			Embedding: ollamaconnector.Ollamasettings.EmbeddingModel,
 		}
 		log.Infof("starting evaluation with id: %s", id.String())
-		log.Infof("LLM: %s embedding: %s", sett.LLM, sett.EmbeddingModel)
+		log.Infof("LLM: %s embedding: %s", evaluationList.LLM, evaluationList.Embedding)
 		for _, fileName := range args {
 			file, err := os.ReadFile(fileName)
 			if err != nil {
@@ -62,15 +61,17 @@ So the input file foo.yaml will create an output like foo.yaml.abcd1234.`,
 		}
 		for i, eval := range evaluationList.Evaluations {
 			log.Infof("on evaluation '%s'", eval.Name)
-			prompt, err := db.GetContext(eval.Prompt, []string{}, sett.ContextLength)
+			log.Infof("prompt: %s", eval.Prompt)
+			prompt, err := db.GetContext(eval.Prompt, []string{}, ollamaconnector.Ollamasettings.GetContextSize())
 			if err != nil {
 				return err
 			}
-			resp, err := sett.SendTask(prompt)
+			resp, err := ollamaconnector.Ollamasettings.SendTask(prompt)
 			evaluationList.Evaluations[i].Response = resp.Response
 			if context {
 				evaluationList.Evaluations[i].Context = prompt
 			}
+			log.Infof("response: %s", eval.Response)
 		}
 		yml, err := yaml.Marshal(evaluationList)
 		if err != nil {

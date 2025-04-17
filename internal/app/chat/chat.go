@@ -167,7 +167,7 @@ func (m *uimodel) TalkLLMBackground(msg string) error {
 	m.mutex.Lock()
 	m.isRunning = true
 	m.mutex.Unlock()
-	prompt, err := m.db.GetContext(msg, []string{}, m.ollama.ContextLength)
+	prompt, err := m.db.GetContext(msg, []string{}, m.ollama.GetContextSize())
 	if err != nil {
 		m.err = err
 		fmt.Println("An errror occured", err)

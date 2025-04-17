@@ -18,8 +18,7 @@ var chatCmd = &cobra.Command{
 He has access to knowledge bases and can access your files
 for better answers.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		settings := ollamaconnector.Ollama()
-		chat.Chat(&settings)
+		chat.Chat(&ollamaconnector.Ollamasettings)
 	},
 }
 
@@ -29,19 +28,18 @@ var reqCmd = &cobra.Command{
 	Use:   "request",
 	Short: "send request from commandline",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		sett := ollamaconnector.Ollama()
 		db, err := database.New()
 		if err != nil {
 			return err
 		}
-		prompt, err := db.GetContext(args[0], []string{}, sett.ContextLength)
+		prompt, err := db.GetContext(args[0], []string{}, ollamaconnector.Ollamasettings.GetContextSize())
 		if err != nil {
 			return err
 		}
 		log.Infof("Prompt: %s", prompt)
 		ch := make(chan *ollamaconnector.TaskResponse)
 		respStr := []string{}
-		go sett.SendTaskStream(prompt, ch)
+		go ollamaconnector.Ollamasettings.SendTaskStream(prompt, ch)
 		for resp := range ch {
 			respStr = append(respStr, resp.Response)
 			log.Debug(resp.Response)

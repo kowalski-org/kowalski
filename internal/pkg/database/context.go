@@ -42,6 +42,7 @@ func (kn Knowledge) GetContext(msg string, collections []string, maxSize int) (s
 		renderedCont += info.Section.RenderWithFiles()
 		// check for renderedCont window
 		if len(renderedCont)+4*contextSize > maxSize {
+			log.Infof("stopped generating context %d > %d", len(renderedCont)+4*contextSize, maxSize)
 			break
 		}
 	}

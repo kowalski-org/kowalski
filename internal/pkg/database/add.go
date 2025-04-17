@@ -1,7 +1,7 @@
 package database
 
 import (
-	"log"
+	"github.com/charmbracelet/log"
 	"math/rand"
 
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
@@ -10,6 +10,8 @@ import (
 	"github.com/ostafen/clover/v2/document"
 	"github.com/ostafen/clover/v2/query"
 )
+
+const nrDocs = 5
 
 func (kn *Knowledge) AddFile(collection string, fileName string) (err error) {
 	info, err := docbook.ParseDocBook(fileName)
@@ -44,9 +46,9 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 			return err
 		}
 		*/
-		log.Printf("Added '%s' with id: %s sum: %s\n", info.Title, docId, info.Hash)
+		log.Infof("added '%s' with id: %s sum: %s", info.Title, docId, info.Hash)
 	} else {
-		log.Printf("Found document '%s': %s %s\n", info.Title, docs[0].ObjectId(), info.Hash)
+		log.Infof("found document '%s': %s %s", info.Title, docs[0].ObjectId(), info.Hash)
 	}
 	return nil
 
@@ -54,11 +56,11 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 
 func (kn *Knowledge) GetInfos(question string, collections []string) (documents []information.Information, err error) {
 	kn.CreateIndex(collections)
-	emb, err := ollamaconnector.Ollama().GetEmbeddings([]string{question})
+	emb, err := ollamaconnector.Ollamasettings.GetEmbeddings([]string{question})
 	if err != nil {
 		return nil, err
 	}
-	lengthVec, indexVec, err := kn.faissIndex.Search(emb.Embeddings[0], 5)
+	lengthVec, indexVec, err := kn.faissIndex.Search(emb.Embeddings[0], nrDocs)
 	if err != nil {
 		return nil, err
 	}

@@ -44,7 +44,7 @@ func (bk *Docbook) ParseDocBook(filename string) (info information.Information, 
 			break
 		}
 	}
-	for _, rootElem := range []string{"article", "topic"} {
+	for _, rootElem := range []string{"article", "topic", "chapter", "sect1", "sect2"} {
 		if root := doc.SelectElement(rootElem); root != nil {
 			for _, section := range root.SelectElements("section") {
 				subsec := parseElement(section)

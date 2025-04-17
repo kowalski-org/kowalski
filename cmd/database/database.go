@@ -66,7 +66,7 @@ to the given database and create embeddings for it.`,
 					return err
 				}
 			} else {
-				log.Printf("file was empty: %s", args[i+1])
+				log.Warnf("file was empty: %s", args[i+1])
 			}
 		}
 		return nil

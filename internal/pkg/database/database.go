@@ -38,8 +38,7 @@ func New(args ...KnowledgeArgs) (*Knowledge, error) {
 	if err != nil {
 		return nil, err
 	}
-	settings := ollamaconnector.Ollama()
-	faissIndex, err := faiss.NewIndexFlat(settings.EmbeddingLength, 1)
+	faissIndex, err := faiss.NewIndexFlat(ollamaconnector.Ollamasettings.GetEmbeddingSize(), 1)
 	if err != nil {
 		return nil, err
 	}
@@ -69,8 +68,7 @@ func (kn *Knowledge) CreateIndex(collections []string) (err error) {
 	for _, collection := range collections {
 		kn.db.ForEach(query.NewQuery(collection), func(doc *document.Document) bool {
 			embFromDB := doc.Get("EmbeddingVec").([]interface{})
-			settings := ollamaconnector.Ollama()
-			emb := make([]float32, settings.EmbeddingLength)
+			emb := make([]float32, ollamaconnector.Ollamasettings.GetEmbeddingSize())
 			if len(embFromDB) != len(emb) {
 				panic(fmt.Sprintf("wrong embedding dimensions faiss: %d emb: %d", len(embFromDB), len(emb)))
 			}

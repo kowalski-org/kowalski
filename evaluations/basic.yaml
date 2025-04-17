@@ -1,3 +1,12 @@
 evaluations:
-  - name: "Install vim"
+  - name: "Install vim 1"
     prompt: "I want to install vim"
+  - name: "Install vim 2"
+    prompt: "I want to use vim on the system"
+  - name: "Install vim 3"
+    prompt: "How can I have vim and remove emacs"
+  - name: "Start ssh"
+    prompt: "How can I start the ssh server"
+  - name: "disable root login"
+    prompt: "How can I disable root login for ssh"
+  
