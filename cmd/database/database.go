@@ -106,6 +106,22 @@ var databaseList = &cobra.Command{
 	},
 }
 
+var databaseGet = &cobra.Command{
+	Use:        "get ID",
+	ArgAliases: []string{"show", "cat"},
+	Short:      "Get the information with ID out of database",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		db, err := database.New()
+		if err != nil {
+			return err
+		}
+		info, err := db.Get(args[0])
+		fmt.Println(info.Render())
+		return nil
+	},
+	Args: cobra.MinimumNArgs(1),
+}
+
 var databaseCheck = &cobra.Command{
 	Use:        "check db for question",
 	ArgAliases: []string{"chk"},
@@ -136,6 +152,7 @@ func init() {
 	databaseCmd.AddCommand(databaseAdd)
 	databaseCmd.AddCommand(databaseList)
 	databaseCmd.AddCommand(databaseCheck)
+	databaseCmd.AddCommand(databaseGet)
 	databaseAdd.PersistentFlags().StringArray("entity", []string{}, "filename of an xml entity defintions")
 	databaseAdd.PersistentFlags().Bool("dumpentity", false, "just dump the used entity map")
 }

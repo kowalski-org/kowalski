@@ -1,6 +1,11 @@
 package database
 
-import "github.com/ostafen/clover/v2/query"
+import (
+	"fmt"
+
+	"github.com/openSUSE/kowalski/internal/pkg/information"
+	"github.com/ostafen/clover/v2/query"
+)
 
 type DocumentInfo struct {
 	Id     string
@@ -16,8 +21,8 @@ func (kn *Knowledge) List(collection string) (docLst []DocumentInfo, err error) 
 	for _, doc := range docs {
 		docLst = append(docLst, DocumentInfo{
 			Id:     doc.ObjectId(),
-			Title:  doc.Get("Title").(string),
-			Source: doc.Get("Source").(string),
+			Title:  fmt.Sprintf("%v", doc.Get("Title")),
+			Source: fmt.Sprintf("%v", doc.Get("Source")),
 		})
 	}
 	return
@@ -25,4 +30,27 @@ func (kn *Knowledge) List(collection string) (docLst []DocumentInfo, err error) 
 
 func (kn *Knowledge) ListCollections() (collections []string, err error) {
 	return kn.db.ListCollections()
+}
+
+func (kn *Knowledge) Get(id string) (information.Information, error) {
+	var info information.Information
+	collections, err := kn.db.ListCollections()
+	if err != nil {
+		return info, err
+	}
+	for _, coll := range collections {
+		doc, err := kn.db.FindById(coll, id)
+		if err != nil {
+			return info, err
+		}
+		if doc == nil {
+			continue
+		}
+		err = doc.Unmarshal(&info)
+		if err != nil {
+			return info, err
+		}
+		break
+	}
+	return info, nil
 }
