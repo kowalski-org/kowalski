@@ -9,4 +9,6 @@ evaluations:
     prompt: "How can I start the ssh server"
   - name: "disable root login"
     prompt: "How can I disable root login for ssh"
+  - name: "Create User Foo"
+    prompt: "How can I create an account for user foo"
   
