@@ -30,26 +30,6 @@ var databaseAdd = &cobra.Command{
 to the given database and create embeddings for it.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		/*
-			entities, err := cmd.PersistentFlags().GetStringArray("entity")
-			if err != nil {
-				return err
-			}
-			entitiesMap := make(map[string]string)
-			for _, ent := range entities {
-				entMap, err := docbook.ReadEntity(ent)
-				if err != nil {
-					return err
-				}
-				maps.Copy(entitiesMap, entMap)
-			}
-			if dump, _ := cmd.PersistentFlags().GetBool("dumpentity"); dump {
-				for key, val := range entitiesMap {
-					fmt.Printf("%s: %s\n", key, val)
-				}
-				return nil
-			}
-		*/
 		cmd.Args = cobra.MinimumNArgs(2)
 		db, err := database.New()
 		if err != nil {
@@ -58,7 +38,7 @@ to the given database and create embeddings for it.`,
 		for i := range args[1:] {
 			info, err := docbook.ParseDocBook(args[i+1])
 			if err != nil {
-				log.Printf("error on file: %s %s\n", args[i+1], err)
+				return err
 			}
 			if !info.Empty() {
 				err = db.AddInformation(args[0], info)
@@ -98,7 +78,8 @@ var databaseList = &cobra.Command{
 			} else {
 				fmt.Printf("Documents:\n")
 				for _, doc := range docs {
-					fmt.Printf("%s %s %d %d\n", doc.Id, doc.Title, doc.NrFiles, doc.NrCommands)
+
+					fmt.Printf("%s %s %d %d\n", doc.Id, doc.Source, doc.NrFiles, doc.NrCommands)
 				}
 			}
 		}
@@ -116,6 +97,9 @@ var databaseGet = &cobra.Command{
 			return err
 		}
 		info, err := db.Get(args[0])
+		if err != nil {
+			return err
+		}
 		fmt.Println(info.Render(templates.RenderInfoWithMeta))
 		return nil
 	},

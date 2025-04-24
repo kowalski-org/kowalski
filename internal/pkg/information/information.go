@@ -24,19 +24,11 @@ type RenderData struct {
 	Level int
 	Section
 }
-type LineType int
-
-const (
-	Text LineType = iota
-	Formatted
-	Title
-	Command
-	File
 )
 
 type Line struct {
 	Text string
-	Type LineType
+	Type string
 }
 
 type Information struct {
@@ -59,7 +51,8 @@ type RetSection struct {
 	Section
 }
 
-func (info *Section) RenderWithFiles(args ...any) (ret string) {
+
+func (info *Section) RenderWithFiles(args ...any) (ret string, err error) {
 	fileFunc := map[string]func(string) string{
 		"FileContext": func(in string) (out string) {
 			if len(info.Files) != 0 {
@@ -111,7 +104,7 @@ func (info *Section) RenderWithFiles(args ...any) (ret string) {
 	return info.Render(fileFunc)
 }
 
-func (info *Section) Render(args ...any) string {
+func (info *Section) Render(args ...any) (string, error) {
 	level := 0
 	funcMap := sprig.FuncMap()
 	tmpl := templates.RenderInfo
@@ -140,47 +133,15 @@ func (info *Section) Render(args ...any) string {
 		Section: *info,
 		Level:   level,
 	}); err != nil {
-		log.Printf("couldn't render template: %s\n", err)
+		return "", err
 	}
-	return strings.Replace(buf.String(), "\n\n", "\n", -1)
+	return strings.Replace(buf.String(), "\n\n", "\n", -1), nil
 }
 
 func (info *Information) Empty() bool {
 	return len(info.Sections) == 0
 }
 
-/*
-func (info *Section) RenderSubsections(level int) (ret string) {
-	for _, sec := range info.SubSections {
-		ret += sec.Render(level + 1)
-	}
-	return
-}
-*/
-/*
-func Flatten(info any) {
-	typ := reflect.TypeOf(info)
-	val := reflect.ValueOf(info)
-	for i := 0; i < val.NumField(); i++ {
-		if typ.Field(i).Type.Kind() == reflect.Array {
-			if val.Len() == 0 {
-				val.Index(i).Set(reflect.Zero(typ.Field(i).Type))
-			} else {
-				Flatten(val.Index(i).Interface)
-			}
-		}
-	}
-}
-*/
-/*
-func (info *Information) CreateHash() []byte {
-	str := info.Render()
-	h := sha256.New()
-	h.Write([]byte(str))
-	info.Hash = fmt.Sprintf("%x", h.Sum(nil))
-	return h.Sum(nil)
-}
-*/
 func (info *Information) CreateEmbedding() (err error) {
 	for _, sec := range info.Sections {
 		str := sec.Render()

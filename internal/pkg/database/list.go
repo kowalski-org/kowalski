@@ -55,7 +55,7 @@ func (kn *Knowledge) Get(id string) (information.Information, error) {
 		if err != nil {
 			return info, err
 		}
-		break
+		return info, nil
 	}
-	return info, nil
+	return info, fmt.Errorf("couldn't find document with id: %s", id)
 }

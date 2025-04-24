@@ -25,7 +25,7 @@ func ParseDocBook(filename string) (info information.Information, err error) {
 	doc.ReadSettings = etree.ReadSettings{
 		Entity: entities,
 	}
-	fileHandle, err := os.Open("filename")
+	fileHandle, err := os.Open(filename)
 	if err != nil {
 		return info, err
 	}
@@ -95,30 +95,79 @@ func cleanText(input string) (output string) {
 	return
 }
 
-func ReadEntity(filename string) (entities map[string]string, err error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, fmt.Errorf("error opening file: %w", err)
+func parse(elem *etree.Element) (lines []information.Line) {
+	for _, e := range elem.ChildElements() {
+		switch strings.ToLower(e.Tag) {
+		default:
+			lines = appendText(lines, e.Text(), e.Tag)
+			lines = append(lines, parse(e)...)
+			lines = appendText(lines, e.Tail(), e.Parent().Tag)
+		case "command", "screen":
+			cmdLine := information.Line{
+				Type: "command",
+			}
+			buf := []string{cleanStr(e.Text())}
+			for _, subCmd := range parse(e) {
+				buf = append(buf, subCmd.Text)
+			}
+			cmdLine.Text = strings.Join(buf, " ")
+			lines = append(lines, cmdLine)
+			lines = appendText(lines, e.Tail(), "text")
+		}
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	entityRegex := regexp.MustCompile(`<!ENTITY\s+([\p{L}][^\s]+)\s+"([^"]+)"\s*>`)
+	return deformat(lines)
+}
 
-	entities = make(map[string]string)
-	for scanner.Scan() {
-		line := scanner.Text()
-		match := entityRegex.FindStringSubmatch(line)
-		if len(match) == 3 {
-			if match[1] != "" && match[2] != "" {
-				entities[match[1]] = match[2]
+var space = regexp.MustCompile(`\s+`)
+
+func cleanStr(input string) string {
+	return strings.TrimSpace(space.ReplaceAllString(input, " "))
+}
+
+func appendText(lines []information.Line, input string, name string) []information.Line {
+	if strings.TrimSpace(input) == "" {
+		return lines
+	} else {
+		// return append(lines, Line{Text: input, Type: GetType(name)})
+		return append(lines, information.Line{Text: cleanStr(input), Type: getType(name)})
+	}
+}
+
+// simplify the text attributes
+func getType(str string) string {
+	switch strings.ToLower(str) {
+	case "title":
+		return "title"
+	case "command", "screen":
+		return "command"
+	case "package", "emphasis", "literal", "option", "replaceable":
+		return "formatted"
+	default:
+		return "text"
+	}
+}
+
+// parse through lines so that e.g. emphasize does not have an own line
+func deformat(input []information.Line) (output []information.Line) {
+	for i, line := range input {
+		switch line.Type {
+		default:
+			output = append(output, line)
+		case "formatted":
+			if len(output) > 0 {
+				output[len(output)-1].Text += " `" + line.Text + "`"
+			} else {
+				output = append(output, line)
+			}
+		case "text":
+			if i > 1 && input[i-1].Type == "formatted" && len(output) > 1 {
+				output[len(output)-1].Text += " " + line.Text
+			} else {
+				output = append(output, line)
 			}
 		}
 	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading file: %w", err)
-	}
-	return entities, nil
+	return
 }
 func parse(elem *etree.Element) (lines []information.Line) {
 	for _, e := range elem.ChildElements() {

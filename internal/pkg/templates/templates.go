@@ -1,13 +1,10 @@
 package templates
 
 const RenderInfo = `
-{{- if .Title }}{{ Section }} {{.Title}}{{ end }}
-{{- if .Text }}
-{{ .Text }}{{ end}}
-{{- range $it := .Items }}
-* {{ $it }}
+# {{ .Title }}
+{{- range $it := .Lines }}
+{{ if eq $it.Type "command" }}'''{{ $it.Text}}'''{{ else }}{{ $it.Text}}{{ end }}
 {{- end }}
-{{ RenderSubsections .Level }}
 `
 
 const RenderInfoWithMeta = RenderInfo + `
