@@ -8,9 +8,11 @@ import (
 )
 
 type DocumentInfo struct {
-	Id     string
-	Title  string
-	Source string
+	Id         string
+	Title      string
+	Source     string
+	NrFiles    int
+	NrCommands int
 }
 
 func (kn *Knowledge) List(collection string) (docLst []DocumentInfo, err error) {
@@ -19,11 +21,14 @@ func (kn *Knowledge) List(collection string) (docLst []DocumentInfo, err error) 
 		return nil, err
 	}
 	for _, doc := range docs {
-		docLst = append(docLst, DocumentInfo{
-			Id:     doc.ObjectId(),
-			Title:  fmt.Sprintf("%v", doc.Get("Title")),
-			Source: fmt.Sprintf("%v", doc.Get("Source")),
-		})
+		docInfo := DocumentInfo{
+			Id:         doc.ObjectId(),
+			Title:      fmt.Sprintf("%v", doc.Get("Title")),
+			Source:     fmt.Sprintf("%v", doc.Get("Source")),
+			NrFiles:    len(doc.Get("Files").([]interface{})),
+			NrCommands: len(doc.Get("Commands").([]interface{})),
+		}
+		docLst = append(docLst, docInfo)
 	}
 	return
 }

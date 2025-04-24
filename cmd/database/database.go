@@ -2,11 +2,12 @@ package databasecmd
 
 import (
 	"fmt"
+
 	"github.com/charmbracelet/log"
-	"maps"
 
 	"github.com/openSUSE/kowalski/internal/pkg/database"
 	"github.com/openSUSE/kowalski/internal/pkg/docbook"
+	"github.com/openSUSE/kowalski/internal/pkg/templates"
 	"github.com/spf13/cobra"
 )
 
@@ -29,34 +30,33 @@ var databaseAdd = &cobra.Command{
 to the given database and create embeddings for it.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		entities, err := cmd.PersistentFlags().GetStringArray("entity")
-		if err != nil {
-			return err
-		}
-		entitiesMap := make(map[string]string)
-		for _, ent := range entities {
-			entMap, err := docbook.ReadEntity(ent)
+		/*
+			entities, err := cmd.PersistentFlags().GetStringArray("entity")
 			if err != nil {
 				return err
 			}
-			maps.Copy(entitiesMap, entMap)
-		}
-		if dump, _ := cmd.PersistentFlags().GetBool("dumpentity"); dump {
-			for key, val := range entitiesMap {
-				fmt.Printf("%s: %s\n", key, val)
+			entitiesMap := make(map[string]string)
+			for _, ent := range entities {
+				entMap, err := docbook.ReadEntity(ent)
+				if err != nil {
+					return err
+				}
+				maps.Copy(entitiesMap, entMap)
 			}
-			return nil
-		}
+			if dump, _ := cmd.PersistentFlags().GetBool("dumpentity"); dump {
+				for key, val := range entitiesMap {
+					fmt.Printf("%s: %s\n", key, val)
+				}
+				return nil
+			}
+		*/
 		cmd.Args = cobra.MinimumNArgs(2)
 		db, err := database.New()
 		if err != nil {
 			return err
 		}
 		for i := range args[1:] {
-			bk := docbook.Docbook{
-				Entities: entitiesMap,
-			}
-			info, err := bk.ParseDocBook(args[i+1])
+			info, err := docbook.ParseDocBook(args[i+1])
 			if err != nil {
 				log.Printf("error on file: %s %s\n", args[i+1], err)
 			}
@@ -98,7 +98,7 @@ var databaseList = &cobra.Command{
 			} else {
 				fmt.Printf("Documents:\n")
 				for _, doc := range docs {
-					fmt.Printf("%s %s\n", doc.Id, doc.Title)
+					fmt.Printf("%s %s %d %d\n", doc.Id, doc.Title, doc.NrFiles, doc.NrCommands)
 				}
 			}
 		}
@@ -116,7 +116,7 @@ var databaseGet = &cobra.Command{
 			return err
 		}
 		info, err := db.Get(args[0])
-		fmt.Println(info.Render())
+		fmt.Println(info.Render(templates.RenderInfoWithMeta))
 		return nil
 	},
 	Args: cobra.MinimumNArgs(1),
@@ -153,7 +153,6 @@ func init() {
 	databaseCmd.AddCommand(databaseList)
 	databaseCmd.AddCommand(databaseCheck)
 	databaseCmd.AddCommand(databaseGet)
-	databaseAdd.PersistentFlags().StringArray("entity", []string{}, "filename of an xml entity defintions")
 	databaseAdd.PersistentFlags().Bool("dumpentity", false, "just dump the used entity map")
 }
 func GetCommand() *cobra.Command {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/DataIntelligenceCrew/go-faiss"
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
+	"github.com/openSUSE/kowalski/internal/pkg/information"
 	"github.com/ostafen/clover/v2"
 	"github.com/ostafen/clover/v2/document"
 	"github.com/ostafen/clover/v2/query"
@@ -67,19 +68,28 @@ func (kn *Knowledge) CreateIndex(collections []string) (err error) {
 	}
 	for _, collection := range collections {
 		kn.db.ForEach(query.NewQuery(collection), func(doc *document.Document) bool {
-			embFromDB := doc.Get("EmbeddingVec").([]interface{})
-			emb := make([]float32, ollamaconnector.Ollamasettings.GetEmbeddingSize())
-			if len(embFromDB) != len(emb) {
-				panic(fmt.Sprintf("wrong embedding dimensions faiss: %d emb: %d", len(embFromDB), len(emb)))
-			}
-			for i := range embFromDB {
-				emb[i] = float32(embFromDB[i].(float64))
-			}
-			err := kn.faissIndex.Add(emb)
+			var info information.Information
+			err := doc.Unmarshal(&info)
 			if err != nil {
-				panic("failed to add document to faiss index")
+				return false
 			}
-			kn.faissId = append(kn.faissId, doc.ObjectId())
+			for i, sec := range info.Sections {
+				// will have to convert from float64 to float32
+				/*
+					emb := make([]float32, ollamaconnector.Ollamasettings.GetEmbeddingSize())
+					if len(sec.EmbeddingVec) != len(emb) {
+						panic(fmt.Sprintf("wrong embedding dimensions faiss: %d emb: %d", len(sec.EmbeddingVec), len(emb)))
+					}
+					for j := range sec.EmbeddingVec {
+						emb[j] = float32(sec.EmbeddingVec[j])
+					}
+				*/
+				err := kn.faissIndex.Add(sec.EmbeddingVec)
+				if err != nil {
+					panic("failed to add document to faiss index")
+				}
+				kn.faissId = append(kn.faissId, doc.ObjectId()+fmt.Sprintf(".%d", i))
+			}
 			return true
 		})
 	}

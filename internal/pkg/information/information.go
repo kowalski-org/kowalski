@@ -3,15 +3,14 @@ package information
 import (
 	"bufio"
 	"bytes"
-	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/charmbracelet/log"
 	"html/template"
 	"os"
-	"reflect"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/charmbracelet/log"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
@@ -25,22 +24,39 @@ type RenderData struct {
 	Level int
 	Section
 }
+type LineType int
+
+const (
+	Text LineType = iota
+	Formatted
+	Title
+	Command
+	File
+)
+
+type Line struct {
+	Text string
+	Type LineType
+}
 
 type Information struct {
-	OS   []string
-	Hash string
-	Dist float32
-	Section
+	OS       []string
+	Hash     string
+	Source   string
+	Sections []Section
 }
 
 type Section struct {
-	Title        string     `yaml:"Title,omitempty"`
-	SubSections  []*Section `yaml:"SubSections,omitempty"`
-	EmbeddingVec []float32  `yaml:"EmbeddingVec,omitempty"`
-	Text         string     `yaml:"Text,omitempty"`
-	Items        []string   `yaml:"Items,omitempty"`
-	Files        []string   `yaml:"Files,omitempty"`
-	Commands     []string   `yaml:"Commands,omitempty"`
+	Title        string    `yaml:"Title,omitempty"`
+	EmbeddingVec []float32 `yaml:"EmbeddingVec,omitempty"`
+	Lines        []Line    `yaml:"Lines,omitempty"`
+	Files        []string  `yaml:"Files,omitempty"`
+	Commands     []string  `yaml:"Commands,omitempty"`
+}
+
+type RetSection struct {
+	Dist float32
+	Section
 }
 
 func (info *Section) RenderWithFiles(args ...any) (ret string) {
@@ -111,7 +127,7 @@ func (info *Section) Render(args ...any) string {
 			}
 		}
 	}
-	funcMap["RenderSubsections"] = info.RenderSubsections
+	// funcMap["RenderSubsections"] = info.RenderSubsections
 	funcMap["Section"] = func() string {
 		return strings.Repeat("#", level)
 	}
@@ -130,17 +146,18 @@ func (info *Section) Render(args ...any) string {
 }
 
 func (info *Information) Empty() bool {
-	return len(info.SubSections) == 0 &&
-		info.Text == ""
+	return len(info.Sections) == 0
 }
 
+/*
 func (info *Section) RenderSubsections(level int) (ret string) {
 	for _, sec := range info.SubSections {
 		ret += sec.Render(level + 1)
 	}
 	return
 }
-
+*/
+/*
 func Flatten(info any) {
 	typ := reflect.TypeOf(info)
 	val := reflect.ValueOf(info)
@@ -154,7 +171,8 @@ func Flatten(info any) {
 		}
 	}
 }
-
+*/
+/*
 func (info *Information) CreateHash() []byte {
 	str := info.Render()
 	h := sha256.New()
@@ -162,16 +180,27 @@ func (info *Information) CreateHash() []byte {
 	info.Hash = fmt.Sprintf("%x", h.Sum(nil))
 	return h.Sum(nil)
 }
+*/
+func (info *Information) CreateEmbedding() (err error) {
+	for _, sec := range info.Sections {
+		str := sec.Render()
+		embResp, err := ollamaconnector.Ollamasettings.GetEmbeddings([]string{str})
+		if err != nil {
+			return err
+		}
+		if len(embResp.Embeddings) == 0 {
+			return fmt.Errorf("couldn't calculate embedding")
+		}
+		sec.EmbeddingVec = embResp.Embeddings[0]
+	}
+	return nil
+}
 
-func (info *Information) CreateEmbedding() (emb []float32, err error) {
-	str := info.Render()
-	embResp, err := ollamaconnector.Ollamasettings.GetEmbeddings([]string{str})
-	if err != nil {
-		return nil, err
+func (info *Information) Render(args ...any) (str string) {
+	str = fmt.Sprintf("File: %s\nOS: %v\n", info.Source, info.OS)
+	for _, sec := range info.Sections {
+		str += sec.Render()
 	}
-	if len(embResp.Embeddings) == 0 {
-		return nil, fmt.Errorf("couldn't calculate embedding")
-	}
-	info.EmbeddingVec = embResp.Embeddings[0]
-	return embResp.Embeddings[0], nil
+	return
+
 }

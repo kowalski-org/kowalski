@@ -1,17 +1,21 @@
 package database
 
 import (
-	"github.com/charmbracelet/log"
 	"math/rand"
+
+	"github.com/charmbracelet/log"
 
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
 	"github.com/openSUSE/kowalski/internal/pkg/docbook"
 	"github.com/openSUSE/kowalski/internal/pkg/information"
+	"github.com/ostafen/clover/v2"
 	"github.com/ostafen/clover/v2/document"
 	"github.com/ostafen/clover/v2/query"
 )
 
 const nrDocs = 5
+
+var idLen = len(clover.NewObjectId())
 
 func (kn *Knowledge) AddFile(collection string, fileName string) (err error) {
 	info, err := docbook.ParseDocBook(fileName)
@@ -28,13 +32,12 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 			return err
 		}
 	}
-	info.CreateHash()
 	// qr := kn.db.Query(collection).Where(clover.Field("Hash").Eq(info.Hash))
 	// docs, _ := qr.FindAll()
 
 	docs, _ := kn.db.FindAll(query.NewQuery(collection).Where(query.Field("Hash").Eq(info.Hash)))
 	if len(docs) == 0 {
-		_, err = info.CreateEmbedding()
+		err = info.CreateEmbedding()
 		if err != nil {
 			return err
 		}
@@ -46,15 +49,15 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 			return err
 		}
 		*/
-		log.Infof("added '%s' with id: %s sum: %s", info.Title, docId, info.Hash)
+		log.Infof("added '%s' with id: %s sum: %s", info.Source, docId, info.Hash)
 	} else {
-		log.Infof("found document '%s': %s %s", info.Title, docs[0].ObjectId(), info.Hash)
+		log.Infof("found document '%s': %s %s", info.Source, docs[0].ObjectId(), info.Hash)
 	}
 	return nil
 
 }
 
-func (kn *Knowledge) GetInfos(question string, collections []string) (documents []information.Information, err error) {
+func (kn *Knowledge) GetInfos(question string, collections []string) (documents []information.RetSection, err error) {
 	kn.CreateIndex(collections)
 	emb, err := ollamaconnector.Ollamasettings.GetEmbeddings([]string{question})
 	if err != nil {
@@ -82,13 +85,13 @@ func (kn *Knowledge) GetInfos(question string, collections []string) (documents 
 					break
 				}
 			}
-			var info information.Information
-			err = dbdoc.Unmarshal(&info)
+			ret := information.RetSection{}
+			err = dbdoc.Unmarshal(&ret.Section)
 			if err != nil {
 				return nil, err
 			}
-			info.Dist = lengthVec[i]
-			documents = append(documents, info)
+			ret.Dist = lengthVec[i]
+			documents = append(documents, ret)
 		}
 	}
 	return
