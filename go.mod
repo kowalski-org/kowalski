@@ -5,7 +5,6 @@ go 1.23.0
 toolchain go1.24.1
 
 require (
-	dario.cat/mergo v1.0.1
 	github.com/DataIntelligenceCrew/go-faiss v0.2.0
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/beevik/etree v1.5.0
@@ -21,6 +20,7 @@ require (
 )
 
 require (
+	dario.cat/mergo v1.0.1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect

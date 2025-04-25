@@ -2,13 +2,18 @@ package databasecmd
 
 import (
 	"fmt"
+	"os"
+	"text/tabwriter"
 
 	"github.com/charmbracelet/log"
+
+	jsonpkg "encoding/json"
 
 	"github.com/openSUSE/kowalski/internal/pkg/database"
 	"github.com/openSUSE/kowalski/internal/pkg/docbook"
 	"github.com/openSUSE/kowalski/internal/pkg/templates"
 	"github.com/spf13/cobra"
+	yamlpkg "gopkg.in/yaml.v3"
 )
 
 // databaseCmd represents the database command
@@ -67,25 +72,56 @@ var databaseList = &cobra.Command{
 			if colls, err := db.ListCollections(); err != nil {
 				return err
 			} else {
-				fmt.Printf("Collections:\n")
+				fmt.Println("Collections:")
 				for _, col := range colls {
-					log.Infof("%s\n", col)
+					fmt.Printf("%s\n", col)
 				}
 			}
 		} else {
 			if docs, err := db.List(args[0]); err != nil {
 				return err
 			} else {
-				fmt.Printf("Documents:\n")
+				w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+				fmt.Fprintln(w, "Id\tSource\tFiles\tCommands")
 				for _, doc := range docs {
 
 					fmt.Printf("%s %s %d %d\n", doc.Id, doc.Source, doc.NrFiles, doc.NrCommands)
 				}
+				w.Flush()
 			}
 		}
 		return nil
 	},
 }
+
+type infoFormat string
+
+const (
+	title infoFormat = "title"
+	full  infoFormat = "full"
+	yaml  infoFormat = "yaml"
+	json  infoFormat = "json"
+)
+
+func (f *infoFormat) String() string {
+	return string(*f)
+}
+
+func (f *infoFormat) Set(str string) error {
+	switch str {
+	case "title", "full", "yaml", "json":
+		*f = infoFormat(str)
+		return nil
+	default:
+		return fmt.Errorf("Unkown output format: %s", str)
+	}
+}
+
+func (f *infoFormat) Type() string {
+	return "infoFormat"
+}
+
+var oFormat infoFormat
 
 var databaseGet = &cobra.Command{
 	Use:        "get ID",
@@ -100,7 +136,18 @@ var databaseGet = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(info.Render(templates.RenderInfoWithMeta))
+		switch oFormat {
+		case full:
+			fmt.Println(info.Render(templates.RenderInfoWithMeta))
+		case yaml:
+			str, _ := yamlpkg.Marshal(info)
+			fmt.Println(string(str))
+		case json:
+			str, _ := jsonpkg.MarshalIndent(info, "", "  ")
+			fmt.Println(string(str))
+		default:
+			fmt.Println(info.Render(templates.RenderTitleOnly))
+		}
 		return nil
 	},
 	Args: cobra.MinimumNArgs(1),
@@ -133,11 +180,11 @@ var databaseCheck = &cobra.Command{
 }
 
 func init() {
+	databaseGet.Flags().Var(&oFormat, "format", "format of the dump")
 	databaseCmd.AddCommand(databaseAdd)
 	databaseCmd.AddCommand(databaseList)
 	databaseCmd.AddCommand(databaseCheck)
 	databaseCmd.AddCommand(databaseGet)
-	databaseAdd.PersistentFlags().Bool("dumpentity", false, "just dump the used entity map")
 }
 func GetCommand() *cobra.Command {
 	return databaseCmd

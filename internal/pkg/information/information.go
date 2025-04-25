@@ -24,11 +24,38 @@ type RenderData struct {
 	Level int
 	Section
 }
+
+type LineType string
+
+const (
+	Title     LineType = "title"
+	Text      LineType = "text"
+	Command   LineType = "command"
+	File      LineType = "file"
+	Formatted LineType = "formatted"
 )
+
+func (t *LineType) String() string {
+	return string(*t)
+}
 
 type Line struct {
 	Text string
-	Type string
+	Type LineType
+}
+
+// simplify the text attributes
+func GetType(str string) LineType {
+	switch strings.ToLower(str) {
+	case "title":
+		return Title
+	case "command", "screen":
+		return Command
+	case "package", "emphasis", "literal", "option", "replaceable":
+		return Formatted
+	default:
+		return Text
+	}
 }
 
 type Information struct {
@@ -36,6 +63,10 @@ type Information struct {
 	Hash     string
 	Source   string
 	Sections []Section
+	// mentioned files info
+	Files []string
+	// mentioned commands in info
+	Commands []string
 }
 
 type Section struct {
@@ -50,7 +81,6 @@ type RetSection struct {
 	Dist float32
 	Section
 }
-
 
 func (info *Section) RenderWithFiles(args ...any) (ret string, err error) {
 	fileFunc := map[string]func(string) string{
@@ -144,7 +174,10 @@ func (info *Information) Empty() bool {
 
 func (info *Information) CreateEmbedding() (err error) {
 	for _, sec := range info.Sections {
-		str := sec.Render()
+		str, err := sec.Render()
+		if err != nil {
+			return err
+		}
 		embResp, err := ollamaconnector.Ollamasettings.GetEmbeddings([]string{str})
 		if err != nil {
 			return err
@@ -157,11 +190,26 @@ func (info *Information) CreateEmbedding() (err error) {
 	return nil
 }
 
-func (info *Information) Render(args ...any) (str string) {
-	str = fmt.Sprintf("File: %s\nOS: %v\n", info.Source, info.OS)
-	for _, sec := range info.Sections {
-		str += sec.Render()
+func (info *Information) Render(args ...any) (ret string, err error) {
+	funcMap := sprig.FuncMap()
+	tmpl := templates.RenderInfo
+	for _, arg := range args {
+		switch t := arg.(type) {
+		case string:
+			tmpl = t
+		case map[string]func(string) string:
+			for key, val := range t {
+				funcMap[key] = val
+			}
+		}
 	}
-	return
-
+	template, err := template.New("RenderInformation").Funcs(funcMap).Parse(tmpl)
+	if err != nil {
+		log.Warnf("error %s for template %s: \n", err, tmpl)
+	}
+	var buf bytes.Buffer
+	if err := template.Execute(&buf, info); err != nil {
+		return "", err
+	}
+	return strings.Replace(buf.String(), "\n\n", "\n", -1), nil
 }

@@ -22,6 +22,14 @@ No commands{{ end }}
 {{- end }}
 `
 
+const RenderTitleOnly = `
+Source: {{ .Source }}
+{{ if .OS }}OS: {{ range $os := .OS}}{{ $os }}{{ end }}{{ end }}
+{{ range $sec := .Sections }}
+{{ $sec.Title }}
+{{ end }}
+`
+
 const Prompt = `Your name is Kowlaski and you are a helpfull assistant for a {{ .Name }} {{ .Version }} system.
 Answer in short sentences.
 {{ .Context }}

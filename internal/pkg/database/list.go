@@ -37,6 +37,7 @@ func (kn *Knowledge) ListCollections() (collections []string, err error) {
 	return kn.db.ListCollections()
 }
 
+// return the whole informaton assosciated with document
 func (kn *Knowledge) Get(id string) (information.Information, error) {
 	var info information.Information
 	collections, err := kn.db.ListCollections()
