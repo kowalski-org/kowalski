@@ -1,7 +1,11 @@
 package database
 
 import (
+	"errors"
+	"fmt"
 	"math/rand"
+	"strconv"
+	"strings"
 
 	"github.com/charmbracelet/log"
 
@@ -12,8 +16,6 @@ import (
 	"github.com/ostafen/clover/v2/document"
 	"github.com/ostafen/clover/v2/query"
 )
-
-const nrDocs = 5
 
 var idLen = len(clover.NewObjectId())
 
@@ -57,7 +59,9 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 
 }
 
-func (kn *Knowledge) GetInfos(question string, collections []string) (documents []information.RetSection, err error) {
+// Get the infos out of the database for the given question. The returned documents only
+// contain this section
+func (kn *Knowledge) GetInfos(question string, collections []string, nrDocs int64) (documents []information.RetSection, err error) {
 	kn.CreateIndex(collections)
 	emb, err := ollamaconnector.Ollamasettings.GetEmbeddings([]string{question})
 	if err != nil {
@@ -69,6 +73,10 @@ func (kn *Knowledge) GetInfos(question string, collections []string) (documents 
 	}
 	for i, indx := range indexVec {
 		if indx >= 0 && indx < int64(len(kn.faissId)) {
+			// the faiss index vector has following format "clover-id:index" where
+			// index refers to the section, so we have to split up
+			var id []string
+			var sectIndex int
 			var dbdoc *document.Document
 			if len(collections) == 0 {
 				collections, err = kn.db.ListCollections()
@@ -76,21 +84,42 @@ func (kn *Knowledge) GetInfos(question string, collections []string) (documents 
 					return
 				}
 			}
+			found := false
 			for _, collection := range collections {
-				dbdoc, err = kn.db.FindById(collection, kn.faissId[indx])
+				id = strings.Split(kn.faissId[indx], ":")
+				if len(id) != 2 {
+					return nil, errors.New("document id in faiss index has wrong format")
+				}
+				sectIndex, err = strconv.Atoi(id[1])
+				if err != nil {
+					return nil, errors.New("couln't get index of section")
+
+				}
+				dbdoc, err = kn.db.FindById(collection, id[0])
+				log.Debugf("int collection %s, getting doc: %s", collection, id[0])
 				if err != nil {
 					return nil, err
 				}
+				if dbdoc == nil {
+					return nil, fmt.Errorf("couldn't find any document")
+				}
 				if dbdoc.ObjectId() != "" {
+					found = true
 					break
 				}
 			}
-			ret := information.RetSection{}
-			err = dbdoc.Unmarshal(&ret.Section)
+			if !found {
+				return nil, nil
+			}
+			baseInfo := information.Information{}
+			err = dbdoc.Unmarshal(&baseInfo)
 			if err != nil {
 				return nil, err
 			}
-			ret.Dist = lengthVec[i]
+			ret := information.RetSection{
+				Section: baseInfo.Sections[sectIndex],
+				Dist:    lengthVec[i],
+			}
 			documents = append(documents, ret)
 		}
 	}

@@ -31,7 +31,8 @@ func (kn Knowledge) GetContext(msg string, collections []string, maxSize int) (s
 	if err = sysinfo.Execute(&buf, promptInfo); err != nil {
 		return "", err
 	}
-	infos, err := kn.GetInfos(msg, collections)
+	// \TODO just get 5 documents, we can do this dynamically
+	infos, err := kn.GetInfos(msg, collections, 5)
 	if err != nil {
 		return "", err
 	}

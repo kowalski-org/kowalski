@@ -167,12 +167,18 @@ var databaseCheck = &cobra.Command{
 		if len(args) > 1 {
 			collections = args[1:]
 		}
-		infos, err := db.GetInfos(args[0], collections)
+		nrDocs, err := cmd.Flags().GetInt64("number")
 		if err != nil {
 			return err
 		}
+		infos, err := db.GetInfos(args[0], collections, nrDocs)
+		if err != nil {
+			return err
+		}
+		fmt.Println("Infos:")
 		for _, info := range infos {
-			fmt.Println(info.Render())
+			str, _ := info.Render()
+			fmt.Println(str)
 		}
 		return nil
 	},
@@ -184,6 +190,7 @@ func init() {
 	databaseCmd.AddCommand(databaseAdd)
 	databaseCmd.AddCommand(databaseList)
 	databaseCmd.AddCommand(databaseCheck)
+	databaseCheck.Flags().Int64P("number", "n", 5, "number of documents to retreive")
 	databaseCmd.AddCommand(databaseGet)
 }
 func GetCommand() *cobra.Command {
