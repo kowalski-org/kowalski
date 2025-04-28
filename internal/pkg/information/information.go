@@ -20,11 +20,6 @@ import (
 const maxdirentries = 10
 const filemaxsize = 2048
 
-type RenderData struct {
-	Level int
-	Section
-}
-
 type LineType string
 
 const (
@@ -135,34 +130,24 @@ func (info *Section) RenderWithFiles(args ...any) (ret string, err error) {
 }
 
 func (info *Section) Render(args ...any) (string, error) {
-	level := 0
 	funcMap := sprig.FuncMap()
 	tmpl := templates.RenderInfo
 	for _, arg := range args {
 		switch t := arg.(type) {
 		case string:
 			tmpl = t
-		case int:
-			level = t
 		case map[string]func(string) string:
 			for key, val := range t {
 				funcMap[key] = val
 			}
 		}
 	}
-	// funcMap["RenderSubsections"] = info.RenderSubsections
-	funcMap["Section"] = func() string {
-		return strings.Repeat("#", level)
-	}
 	template, err := template.New("sections").Funcs(funcMap).Parse(tmpl)
 	if err != nil {
 		log.Printf("couldn't parse template: %s\n", err)
 	}
 	var buf bytes.Buffer
-	if err := template.Execute(&buf, RenderData{
-		Section: *info,
-		Level:   level,
-	}); err != nil {
+	if err := template.Execute(&buf, *info); err != nil {
 		return "", err
 	}
 	return strings.Replace(buf.String(), "\n\n", "\n", -1), nil
@@ -173,7 +158,7 @@ func (info *Information) Empty() bool {
 }
 
 func (info *Information) CreateEmbedding() (err error) {
-	for _, sec := range info.Sections {
+	for i, sec := range info.Sections {
 		str, err := sec.Render()
 		if err != nil {
 			return err
@@ -185,7 +170,7 @@ func (info *Information) CreateEmbedding() (err error) {
 		if len(embResp.Embeddings) == 0 {
 			return fmt.Errorf("couldn't calculate embedding")
 		}
-		sec.EmbeddingVec = embResp.Embeddings[0]
+		info.Sections[i].EmbeddingVec = embResp.Embeddings[0]
 	}
 	return nil
 }

@@ -123,6 +123,8 @@ func parse(elem *etree.Element) (lines []information.Line) {
 			titleLine.Text = strings.Join(buf, " ")
 			lines = append(lines, titleLine)
 			lines = appendText(lines, e.Tail(), "text")
+		case "remark", "info":
+			continue
 		}
 	}
 	return deformat(lines)

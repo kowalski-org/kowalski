@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/DataIntelligenceCrew/go-faiss"
+	"github.com/charmbracelet/log"
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
 	"github.com/openSUSE/kowalski/internal/pkg/information"
 	"github.com/ostafen/clover/v2"
@@ -84,11 +85,15 @@ func (kn *Knowledge) CreateIndex(collections []string) (err error) {
 						emb[j] = float32(sec.EmbeddingVec[j])
 					}
 				*/
+				if len(sec.EmbeddingVec) == 0 {
+					log.Debugf("couldn't add %s %d\n", sec.Title, len(sec.EmbeddingVec))
+					continue
+				}
 				err := kn.faissIndex.Add(sec.EmbeddingVec)
 				if err != nil {
 					panic("failed to add document to faiss index")
 				}
-				kn.faissId = append(kn.faissId, doc.ObjectId()+fmt.Sprintf(".%d", i))
+				kn.faissId = append(kn.faissId, doc.ObjectId()+fmt.Sprintf(":%d", i))
 			}
 			return true
 		})
