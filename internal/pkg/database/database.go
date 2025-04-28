@@ -25,9 +25,11 @@ type KnowledgeOpts struct {
 	filename string
 }
 
+var DBLocation string = "cloverDB"
+
 func New(args ...KnowledgeArgs) (*Knowledge, error) {
 	opts := KnowledgeOpts{
-		filename: "cloverDB",
+		filename: DBLocation,
 	}
 	for _, arg := range args {
 		arg(&opts)
