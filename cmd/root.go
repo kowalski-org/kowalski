@@ -8,6 +8,7 @@ import (
 	databasecmd "github.com/openSUSE/kowalski/cmd/database"
 	evaluatecmd "github.com/openSUSE/kowalski/internal/app/evaluate"
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
+	"github.com/openSUSE/kowalski/internal/pkg/database"
 	"github.com/openSUSE/kowalski/internal/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -51,6 +52,7 @@ func init() {
 	viper.SetDefault("llm", "gemma3:4b")
 	viper.SetDefault("embedding", "nomic-embed-text")
 	viper.SetDefault("URL", "http://localhost:11434")
+	viper.SetDefault("DBLocation", "/usr/lib/kowalski")
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -58,6 +60,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&ollamaconnector.Ollamasettings.LLM, "modell", viper.GetString("llm"), "LLM modell to be used for answers")
 	rootCmd.PersistentFlags().StringVar(&ollamaconnector.Ollamasettings.EmbeddingModel, "embedding", viper.GetString("embedding"), "embedding model for the knowledge database")
 	rootCmd.PersistentFlags().StringVar(&ollamaconnector.Ollamasettings.OllamaURL, "URL", viper.GetString("URL"), "base URL for ollama requests")
+	rootCmd.PersistentFlags().StringVar(&database.DBLocation, "DBLocation", viper.GetString("DBLocation"), "path to knowledge database")
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "turn on debugging messages")
 	// when this action is called directly.
 	rootCmd.AddCommand(chatcmd.GetCommand())
@@ -80,7 +83,7 @@ func initConfig() {
 		// Search config in home directory with name ".kowalski" (without extension).
 		viper.AddConfigPath(home)
 		viper.SetConfigType("yaml")
-		viper.SetConfigName(".kowalski")
+		viper.SetConfigName(".config/kowalski")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
