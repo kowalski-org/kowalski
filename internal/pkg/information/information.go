@@ -24,19 +24,38 @@ type RenderData struct {
 	Level int
 	Section
 }
-type LineType int
+
+type LineType string
 
 const (
-	Text LineType = iota
-	Formatted
-	Title
-	Command
-	File
+	Title     LineType = "title"
+	Text      LineType = "text"
+	Command   LineType = "command"
+	File      LineType = "file"
+	Formatted LineType = "formatted"
 )
+
+func (t *LineType) String() string {
+	return string(*t)
+}
 
 type Line struct {
 	Text string
 	Type LineType
+}
+
+// simplify the text attributes
+func GetType(str string) LineType {
+	switch strings.ToLower(str) {
+	case "title":
+		return Title
+	case "command", "screen":
+		return Command
+	case "package", "emphasis", "literal", "option", "replaceable":
+		return Formatted
+	default:
+		return Text
+	}
 }
 
 type Information struct {
@@ -44,6 +63,10 @@ type Information struct {
 	Hash     string
 	Source   string
 	Sections []Section
+	// mentioned files info
+	Files []string
+	// mentioned commands in info
+	Commands []string
 }
 
 type Section struct {
@@ -59,7 +82,7 @@ type RetSection struct {
 	Section
 }
 
-func (info *Section) RenderWithFiles(args ...any) (ret string) {
+func (info *Section) RenderWithFiles(args ...any) (ret string, err error) {
 	fileFunc := map[string]func(string) string{
 		"FileContext": func(in string) (out string) {
 			if len(info.Files) != 0 {
@@ -111,7 +134,7 @@ func (info *Section) RenderWithFiles(args ...any) (ret string) {
 	return info.Render(fileFunc)
 }
 
-func (info *Section) Render(args ...any) string {
+func (info *Section) Render(args ...any) (string, error) {
 	level := 0
 	funcMap := sprig.FuncMap()
 	tmpl := templates.RenderInfo
@@ -140,50 +163,21 @@ func (info *Section) Render(args ...any) string {
 		Section: *info,
 		Level:   level,
 	}); err != nil {
-		log.Printf("couldn't render template: %s\n", err)
+		return "", err
 	}
-	return strings.Replace(buf.String(), "\n\n", "\n", -1)
+	return strings.Replace(buf.String(), "\n\n", "\n", -1), nil
 }
 
 func (info *Information) Empty() bool {
 	return len(info.Sections) == 0
 }
 
-/*
-func (info *Section) RenderSubsections(level int) (ret string) {
-	for _, sec := range info.SubSections {
-		ret += sec.Render(level + 1)
-	}
-	return
-}
-*/
-/*
-func Flatten(info any) {
-	typ := reflect.TypeOf(info)
-	val := reflect.ValueOf(info)
-	for i := 0; i < val.NumField(); i++ {
-		if typ.Field(i).Type.Kind() == reflect.Array {
-			if val.Len() == 0 {
-				val.Index(i).Set(reflect.Zero(typ.Field(i).Type))
-			} else {
-				Flatten(val.Index(i).Interface)
-			}
-		}
-	}
-}
-*/
-/*
-func (info *Information) CreateHash() []byte {
-	str := info.Render()
-	h := sha256.New()
-	h.Write([]byte(str))
-	info.Hash = fmt.Sprintf("%x", h.Sum(nil))
-	return h.Sum(nil)
-}
-*/
 func (info *Information) CreateEmbedding() (err error) {
 	for _, sec := range info.Sections {
-		str := sec.Render()
+		str, err := sec.Render()
+		if err != nil {
+			return err
+		}
 		embResp, err := ollamaconnector.Ollamasettings.GetEmbeddings([]string{str})
 		if err != nil {
 			return err
@@ -196,11 +190,26 @@ func (info *Information) CreateEmbedding() (err error) {
 	return nil
 }
 
-func (info *Information) Render(args ...any) (str string) {
-	str = fmt.Sprintf("File: %s\nOS: %v\n", info.Source, info.OS)
-	for _, sec := range info.Sections {
-		str += sec.Render()
+func (info *Information) Render(args ...any) (ret string, err error) {
+	funcMap := sprig.FuncMap()
+	tmpl := templates.RenderInfo
+	for _, arg := range args {
+		switch t := arg.(type) {
+		case string:
+			tmpl = t
+		case map[string]func(string) string:
+			for key, val := range t {
+				funcMap[key] = val
+			}
+		}
 	}
-	return
-
+	template, err := template.New("RenderInformation").Funcs(funcMap).Parse(tmpl)
+	if err != nil {
+		log.Warnf("error %s for template %s: \n", err, tmpl)
+	}
+	var buf bytes.Buffer
+	if err := template.Execute(&buf, info); err != nil {
+		return "", err
+	}
+	return strings.Replace(buf.String(), "\n\n", "\n", -1), nil
 }

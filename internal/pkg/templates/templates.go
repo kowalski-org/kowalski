@@ -1,13 +1,10 @@
 package templates
 
 const RenderInfo = `
-{{- if .Title }}{{ Section }} {{.Title}}{{ end }}
-{{- if .Text }}
-{{ .Text }}{{ end}}
-{{- range $it := .Items }}
-* {{ $it }}
+# {{ .Title }}
+{{- range $it := .Lines }}
+{{ if eq $it.Type "command" }}'''{{ $it.Text}}'''{{ else }}{{ $it.Text}}{{ end }}
 {{- end }}
-{{ RenderSubsections .Level }}
 `
 
 const RenderInfoWithMeta = RenderInfo + `
@@ -23,6 +20,14 @@ No commands{{ end }}
 {{- range $cmd := .Commands}}
 * {{ $cmd }}
 {{- end }}
+`
+
+const RenderTitleOnly = `
+Source: {{ .Source }}
+{{ if .OS }}OS: {{ range $os := .OS}}{{ $os }}{{ end }}{{ end }}
+{{ range $sec := .Sections }}
+{{ $sec.Title }}
+{{ end }}
 `
 
 const Prompt = `Your name is Kowlaski and you are a helpfull assistant for a {{ .Name }} {{ .Version }} system.
