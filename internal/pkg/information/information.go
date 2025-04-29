@@ -23,11 +23,16 @@ const filemaxsize = 2048
 type LineType string
 
 const (
+	// values are gathered from the tags
 	Title     LineType = "title"
 	Text      LineType = "text"
 	Command   LineType = "command"
 	File      LineType = "file"
 	Formatted LineType = "formatted"
+	// this type must be created from it's context
+	SubTitle    LineType = "subtitle"
+	SubSubTitle LineType = "subsubtitle"
+	Warning     LineType = "warning"
 )
 
 func (t *LineType) String() string {
@@ -72,11 +77,13 @@ type Section struct {
 	Commands     []string  `yaml:"Commands,omitempty"`
 }
 
+// data returned from db for the LLM modell
 type RetSection struct {
 	Dist float32
 	Section
 }
 
+// render the section so that it includes the files mentioned in the document
 func (info *Section) RenderWithFiles(args ...any) (ret string, err error) {
 	fileFunc := map[string]func(string) string{
 		"FileContext": func(in string) (out string) {

@@ -2,7 +2,11 @@ package templates
 
 const RenderInfo = `
 # {{ .Title }} {{ range $it := .Lines }}
-{{ if eq $it.Type "command" }}'''{{ $it.Text}}'''{{ else }}{{ $it.Text}}{{ end }}
+{{ if eq $it.Type "command" }}'''{{ $it.Text}}'''{{ else }}
+{{- if eq $it.Type "subtitle"}}## {{ end }}
+{{- if eq $it.Type "subsubtitle"}}### {{ end }}
+{{- if eq $it.Type "warning"}}WARNING: {{ end }}
+{{- $it.Text}}{{ end }}
 {{- end }}`
 
 const RenderInfoWithMeta = RenderInfo + `
