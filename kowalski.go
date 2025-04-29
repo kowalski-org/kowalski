@@ -21,8 +21,16 @@ THE SOFTWARE.
 */
 package main
 
-import "github.com/openSUSE/kowalski/cmd"
+import (
+	_ "embed"
+	"github.com/openSUSE/kowalski/cmd"
+	"github.com/openSUSE/kowalski/internal/pkg/version"
+)
+
+//go:embed VERSION
+var act_vers string
 
 func main() {
+	version.Version = act_vers
 	cmd.Execute()
 }

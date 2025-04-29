@@ -27,7 +27,7 @@ So the input file foo.yaml will create an output like foo.yaml.abcd1234.`,
 		id := uuid.New()
 		evaluationList := evaluate.EvalutaionList{
 			Id:        id.String(),
-			Version:   version.Commit,
+			Version:   version.Version,
 			LLM:       ollamaconnector.Ollamasettings.LLM,
 			Embedding: ollamaconnector.Ollamasettings.EmbeddingModel,
 		}
@@ -71,6 +71,13 @@ So the input file foo.yaml will create an output like foo.yaml.abcd1234.`,
 			if context {
 				evaluationList.Evaluations[i].Context = prompt
 			}
+			evaluationList.Evaluations[i].TotalDuration = resp.TotalDuration
+			evaluationList.Evaluations[i].LoadDuration = resp.LoadDuration
+			evaluationList.Evaluations[i].PromptEvalCount = resp.PromptEvalCount
+			evaluationList.Evaluations[i].PromptEvalDuration = resp.PromptEvalDuration
+			evaluationList.Evaluations[i].EvalCount = resp.EvalCount
+			evaluationList.Evaluations[i].EvalDuration = resp.EvalDuration
+			log.Infof("TotalDuration %d, LoadDuration %d, PromptEvalCount  %d, PromptEvalDuration %d, EvalCount %d, EvalDuration %d", resp.TotalDuration, resp.LoadDuration, resp.PromptEvalCount, resp.PromptEvalDuration, resp.EvalCount, resp.EvalDuration)
 			log.Infof("response: %s", eval.Response)
 		}
 		yml, err := yaml.Marshal(evaluationList)
