@@ -116,6 +116,14 @@ func parse(elem *etree.Element) (lines []information.Line) {
 			titleLine := information.Line{
 				Type: information.Title,
 			}
+			switch strings.ToLower(e.Parent().Tag) {
+			case "sect2":
+				titleLine.Type = information.SubTitle
+			case "sect3", "example", "tip", "note":
+				titleLine.Type = information.SubSubTitle
+			case "warning":
+				titleLine.Type = information.Warning
+			}
 			buf := []string{cleanStr(e.Text())}
 			for _, subCmd := range parse(e) {
 				buf = append(buf, subCmd.Text)
@@ -130,6 +138,7 @@ func parse(elem *etree.Element) (lines []information.Line) {
 	return deformat(lines)
 }
 
+// make it global as called several times
 var space = regexp.MustCompile(`\s+`)
 
 func cleanStr(input string) string {
