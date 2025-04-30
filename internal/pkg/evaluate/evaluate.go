@@ -2,13 +2,19 @@ package evaluate
 
 type Evaluation struct {
 	// name of evluation, must be provided
-	Name     string   `yaml:"name"`
-	Prompt   string   `yaml:"prompt"`
-	OS       string   `yaml:"OS,omitempty"`
-	Context  string   `yaml:"context,omitempty"`
-	Response string   `yaml:"response,omitempty"`
-	Answers  []string `yaml:"answers,omitempty"`
-	Files    []*File  `yaml:"files,omitempty"`
+	Name               string   `yaml:"name"`
+	Prompt             string   `yaml:"prompt"`
+	OS                 string   `yaml:"OS,omitempty"`
+	Context            string   `yaml:"context,omitempty"`
+	Response           string   `yaml:"response,omitempty"`
+	Answers            []string `yaml:"answers,omitempty"`
+	Files              []*File  `yaml:"files,omitempty"`
+	TotalDuration      int64    `yaml:"total_duration"`
+	LoadDuration       int      `yaml:"load_duration"`
+	PromptEvalCount    int      `yaml:"prompt_eval_count"`
+	PromptEvalDuration int      `yaml:"prompt_eval_duration"`
+	EvalCount          int      `yaml:"eval_count"`
+	EvalDuration       int64    `yaml:"eval_duration"`
 }
 
 type File struct {

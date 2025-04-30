@@ -38,6 +38,7 @@ func New(args ...KnowledgeArgs) (*Knowledge, error) {
 	if errors.Is(err, fs.ErrNotExist) {
 		os.MkdirAll(opts.filename, 0755)
 	}
+	log.Debugf("opening database: %s", opts.filename)
 	db, err := clover.Open(opts.filename)
 	if err != nil {
 		return nil, err
