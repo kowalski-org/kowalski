@@ -1,8 +1,10 @@
 package ollamaconnector
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -83,6 +85,7 @@ type ModelInfo struct {
 }
 
 func (settings Settings) SendTask(msg string) (resp *TaskResponse, err error) {
+	settings.PullModel(settings.LLM)
 	req := TaskRequest{
 		Prompt:  msg,
 		Model:   settings.LLM,
@@ -108,7 +111,9 @@ func (settings Settings) SendTask(msg string) (resp *TaskResponse, err error) {
 	err = json.NewDecoder(httpResp.Body).Decode(&ollamaResp)
 	return &ollamaResp, err
 }
+
 func (settings Settings) SendTaskStream(msg string, resp chan *TaskResponse) (err error) {
+	settings.PullModel(settings.LLM)
 	req := TaskRequest{
 		Prompt: msg,
 		// System: templates.SystemPrompt,
@@ -144,6 +149,7 @@ func (settings Settings) SendTaskStream(msg string, resp chan *TaskResponse) (er
 }
 
 func (settings Settings) GetEmbeddings(emb []string) (*EmbeddingResponse, error) {
+	settings.PullModel(settings.EmbeddingModel)
 	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/api/embed"
 	req := EmbeddingRequest{
 		Input: emb,
@@ -248,4 +254,65 @@ func (settings Settings) GetModelInfo(name string) (*ModelInfo, error) {
 	}
 	settings.info.isSet = true
 	return &settings.info, nil
+}
+
+// check for model on the ollam instance
+func (settings *Settings) FindModel(name string) (found bool, err error) {
+	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/api/tags"
+	modelResp := struct {
+		Models []map[string]any `json:"Models"`
+	}{}
+	httpGet, err := http.Get(URL)
+	if err != nil {
+		return false, err
+	}
+	if httpGet.StatusCode != http.StatusOK {
+		return false, errors.New("couldn't list models of ollana")
+	}
+	err = json.NewDecoder(httpGet.Body).Decode(&modelResp)
+	if err != nil {
+		return false, errors.New("couldn't parse models from server")
+	}
+	for _, it := range modelResp.Models {
+		ok := it["name"] == name
+		if ok {
+			return ok, nil
+		}
+	}
+	return false, nil
+}
+
+// pull model if not present
+func (settings *Settings) PullModel(name string) (err error) {
+	found, err := settings.FindModel(name)
+	if err != nil {
+		return err
+	}
+	if found {
+		return nil
+	}
+	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/api/pull"
+	var req = struct {
+		Model  string `json:"model"`
+		Stream bool   `json:"stream,omitempty"`
+	}{
+		Model:  name,
+		Stream: false,
+	}
+	js, _ := json.Marshal(req)
+	client := http.Client{}
+	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
+	httpResp, err := client.Do(httpReq)
+	if httpResp.StatusCode != http.StatusOK {
+		return errors.New("couldn't pull modell")
+	}
+	reader := bufio.NewReader(httpResp.Body)
+	for {
+		line, err := reader.ReadBytes('\n')
+		if err != nil {
+			break
+		}
+		log.Debug(string(line))
+	}
+	return nil
 }
