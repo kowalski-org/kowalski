@@ -223,6 +223,7 @@ func (settings *Settings) GetContextSize() int {
 Get the basic information of the model via the REST API from ollma
 */
 func (settings Settings) GetModelInfo(name string) (*ModelInfo, error) {
+	settings.PullModel(name)
 	if settings.info.isSet {
 		return &settings.info, nil
 	}
