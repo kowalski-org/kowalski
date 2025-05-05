@@ -27,4 +27,4 @@ COPY --from=builder /suseDoc /suseDoc
 WORKDIR /kowalski
 ENV KW_DATABASE /suseDoc
 ENV KW_URL http://host.docker.internal:11434
-CMD ["/kowalski/kowalski", "chat"]
+ENTRYPOINT "/kowalski/kowalski"

@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/charmbracelet/log"
+	"github.com/openSUSE/kowalski/internal/pkg/file"
 	"github.com/openSUSE/kowalski/internal/pkg/templates"
 	"github.com/spf13/viper"
 )
@@ -18,7 +19,7 @@ type PromptInfo struct {
 	Context string
 }
 
-func (kn Knowledge) GetContext(msg string, collections []string, maxSize int) (string, error) {
+func (kn Knowledge) GetContext(msg string, collections []string, location file.Location, maxSize int) (string, error) {
 	log.Debugf("Getting context(%d) for %s in %s\n", maxSize, msg, collections)
 	promptInfo := GetSystemInfo()
 	promptInfo.Task = msg
@@ -40,7 +41,9 @@ func (kn Knowledge) GetContext(msg string, collections []string, maxSize int) (s
 	renderedCont := ""
 	for _, info := range infos {
 		renderedCont += "This help document may be related to the problem:\n"
-		if str, err := info.Section.RenderWithFiles(); err == nil {
+		if str, err := info.Section.Render(map[string]func(string) string{
+			"FileInfo": func(input string) string { return location.Get(input) },
+		}); err == nil {
 			renderedCont += str
 		} else {
 			return renderedCont, err

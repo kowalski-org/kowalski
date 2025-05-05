@@ -8,6 +8,7 @@ import (
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
 	"github.com/openSUSE/kowalski/internal/pkg/database"
 	"github.com/openSUSE/kowalski/internal/pkg/evaluate"
+	"github.com/openSUSE/kowalski/internal/pkg/file"
 	"github.com/openSUSE/kowalski/internal/pkg/version"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -59,28 +60,36 @@ So the input file foo.yaml will create an output like foo.yaml.abcd1234.`,
 		if err != nil {
 			return err
 		}
-		for i, eval := range evaluationList.Evaluations {
+		resultList := []evaluate.EvlatuationResult{}
+		for _, eval := range evaluationList.Evaluations {
 			log.Infof("on evaluation '%s'", eval.Name)
 			log.Infof("prompt: %s", eval.Prompt)
-			prompt, err := db.GetContext(eval.Prompt, []string{}, ollamaconnector.Ollamasettings.GetContextSize())
+			mock := file.Mock{
+				Content: map[string]string{"foo": "baar"},
+			}
+			prompt, err := db.GetContext(eval.Prompt, []string{}, mock, ollamaconnector.Ollamasettings.GetContextSize())
 			if err != nil {
 				return err
 			}
 			resp, err := ollamaconnector.Ollamasettings.SendTask(prompt)
-			evaluationList.Evaluations[i].Response = resp.Response
-			if context {
-				evaluationList.Evaluations[i].Context = prompt
+			result := evaluate.EvlatuationResult{
+				Response:           resp.Response,
+				TotalDuration:      resp.TotalDuration,
+				LoadDuration:       resp.LoadDuration,
+				PromptEvalCount:    resp.PromptEvalCount,
+				PromptEvalDuration: resp.PromptEvalDuration,
+				EvalCount:          resp.EvalCount,
+				EvalDuration:       resp.EvalDuration,
+				Evaluation:         *eval,
 			}
-			evaluationList.Evaluations[i].TotalDuration = resp.TotalDuration
-			evaluationList.Evaluations[i].LoadDuration = resp.LoadDuration
-			evaluationList.Evaluations[i].PromptEvalCount = resp.PromptEvalCount
-			evaluationList.Evaluations[i].PromptEvalDuration = resp.PromptEvalDuration
-			evaluationList.Evaluations[i].EvalCount = resp.EvalCount
-			evaluationList.Evaluations[i].EvalDuration = resp.EvalDuration
+			if context {
+				result.Context = prompt
+			}
 			log.Infof("TotalDuration %d, LoadDuration %d, PromptEvalCount  %d, PromptEvalDuration %d, EvalCount %d, EvalDuration %d", resp.TotalDuration, resp.LoadDuration, resp.PromptEvalCount, resp.PromptEvalDuration, resp.EvalCount, resp.EvalDuration)
-			log.Infof("response: %s", eval.Response)
+			log.Infof("response: %s", result.Response)
+			resultList = append(resultList, result)
 		}
-		yml, err := yaml.Marshal(evaluationList)
+		yml, err := yaml.Marshal(resultList)
 		if err != nil {
 			return err
 		}
