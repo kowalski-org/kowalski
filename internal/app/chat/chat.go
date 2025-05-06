@@ -14,13 +14,14 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
 	"github.com/openSUSE/kowalski/internal/pkg/database"
+	"github.com/openSUSE/kowalski/internal/pkg/file"
 )
 
 const gap = "\n\n"
 
 var uiProc *tea.Program
 
-func Chat(llm *ollamaconnector.Settings) error {
+func Chat(llm *ollamaconnector.Settings, location file.Location) error {
 	if log.GetLevel() <= log.DebugLevel {
 		f, err := tea.LogToFile("debug.log", "debug")
 		if err != nil {
@@ -30,7 +31,7 @@ func Chat(llm *ollamaconnector.Settings) error {
 		log.SetOutput(f)
 		defer f.Close()
 	}
-	uimodel := initialModel(llm)
+	uimodel := initialModel(llm, location)
 	uiProc = tea.NewProgram(&uimodel)
 	if _, err := uiProc.Run(); err != nil {
 
@@ -50,6 +51,7 @@ type uimodel struct {
 	textarea    textarea.Model
 	senderStyle lipgloss.Style
 	ollama      *ollamaconnector.Settings
+	location    file.Location
 	uid         string
 	mutex       sync.Mutex
 	isRunning   bool
@@ -57,7 +59,7 @@ type uimodel struct {
 	db          *database.Knowledge
 }
 
-func initialModel(llm *ollamaconnector.Settings) uimodel {
+func initialModel(llm *ollamaconnector.Settings, location file.Location) uimodel {
 	ta := textarea.New()
 	ta.Placeholder = "Type CTR-C or ESC to quit..."
 	ta.Focus()
@@ -90,6 +92,7 @@ func initialModel(llm *ollamaconnector.Settings) uimodel {
 		senderStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("5")),
 		err:         nil,
 		ollama:      llm,
+		location:    location,
 		uid:         uid.Username,
 		db:          db,
 	}
@@ -167,7 +170,7 @@ func (m *uimodel) TalkLLMBackground(msg string) error {
 	m.mutex.Lock()
 	m.isRunning = true
 	m.mutex.Unlock()
-	prompt, err := m.db.GetContext(msg, []string{}, m.ollama.GetContextSize())
+	prompt, err := m.db.GetContext(msg, []string{}, m.location, m.ollama.GetContextSize())
 	if err != nil {
 		m.err = err
 		fmt.Println("An errror occured", err)

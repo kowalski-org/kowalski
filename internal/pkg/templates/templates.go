@@ -11,10 +11,9 @@ const RenderInfo = `
 
 const RenderInfoWithMeta = RenderInfo + `
 {{- if .Files}}
-Files:{{ else }}
-No files{{ end }}
+Following mentioned files and directories are present on the system:
 {{- range $file := .Files}}
-* {{ $file }}
+{{ RenderFile $file }}
 {{- end }}
 {{- if .Commands }}
 Commands:{{ else }}

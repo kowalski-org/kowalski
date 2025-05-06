@@ -1,14 +1,10 @@
 package information
 
 import (
-	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"html/template"
-	"os"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/charmbracelet/log"
 
@@ -81,59 +77,6 @@ type Section struct {
 type RetSection struct {
 	Dist float32
 	Section
-}
-
-// render the section so that it includes the files mentioned in the document
-func (info *Section) RenderWithFiles(args ...any) (ret string, err error) {
-	fileFunc := map[string]func(string) string{
-		"FileContext": func(in string) (out string) {
-			if len(info.Files) != 0 {
-				out += "On the actual system we have following files and directories:"
-				for _, file := range info.Files {
-					fileStat, err := os.Stat(file)
-					if errors.Is(err, os.ErrNotExist) {
-						if strings.HasSuffix(file, "/") {
-							out += fmt.Sprintf("* directory %s doesn't exist on the system\n", file)
-						} else {
-							out += fmt.Sprintf("* file %s doesn't exist on the system\n", file)
-						}
-					}
-					if fileStat.IsDir() {
-						entries, _ := os.ReadDir(file)
-						if len(entries) < maxdirentries {
-							var strEnt []string
-							for _, ent := range entries {
-								strEnt = append(strEnt, ent.Name())
-							}
-							out += fmt.Sprintf("* directory %s has following entries %s", file, strings.Join(strEnt, ","))
-						} else {
-							out += fmt.Sprintf("* directory %s has more than %d entries", file, maxdirentries)
-
-						}
-					} else {
-						if fileStat.Size() < filemaxsize {
-							readFile, _ := os.Open(os.Args[1])
-							if err != nil {
-								out += fmt.Sprintf("* file %s couldn't be opened", file)
-							}
-							fileScanner := bufio.NewScanner(readFile)
-							fileScanner.Split(bufio.ScanLines)
-							fileScanner.Scan()
-							if utf8.ValidString(fileScanner.Text()) {
-								out += fmt.Sprintf("* file %s has following content: ```\n%s", file, fileScanner.Text())
-								for fileScanner.Scan() {
-									out += fileScanner.Text()
-								}
-							}
-						} else {
-							out += fmt.Sprintf("* file %s exists and larger than %d bytes", file, filemaxsize)
-						}
-					}
-				}
-			}
-			return
-		}}
-	return info.Render(fileFunc)
 }
 
 func (info *Section) Render(args ...any) (string, error) {

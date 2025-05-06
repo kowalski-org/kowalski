@@ -7,6 +7,7 @@ import (
 	"github.com/openSUSE/kowalski/internal/app/chat"
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
 	"github.com/openSUSE/kowalski/internal/pkg/database"
+	"github.com/openSUSE/kowalski/internal/pkg/file"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +19,11 @@ var chatCmd = &cobra.Command{
 He has access to knowledge bases and can access your files
 for better answers.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		chat.Chat(&ollamaconnector.Ollamasettings)
+		locationStr, _ := cmd.Flags().GetString("location")
+		location := file.Local{
+			Chroot: locationStr,
+		}
+		chat.Chat(&ollamaconnector.Ollamasettings, location)
 	},
 }
 
@@ -32,7 +37,11 @@ var reqCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		prompt, err := db.GetContext(args[0], []string{}, ollamaconnector.Ollamasettings.GetContextSize())
+		locationStr, _ := cmd.Flags().GetString("location")
+		location := file.Local{
+			Chroot: locationStr,
+		}
+		prompt, err := db.GetContext(args[0], []string{}, location, ollamaconnector.Ollamasettings.GetContextSize())
 		if err != nil {
 			return err
 		}
@@ -53,6 +62,7 @@ var reqCmd = &cobra.Command{
 
 func init() {
 	chatCmd.AddCommand(reqCmd)
+	chatCmd.PersistentFlags().String("location", "", "location of the actual files")
 }
 
 func GetCommand() *cobra.Command {
