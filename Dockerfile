@@ -11,7 +11,7 @@ RUN go build kowalski.go
 RUN git clone --depth 1 https://github.com/SUSE/doc-sle.git
 
 ENV KW_DATABASE /suseDoc
-ENV KW_URL http://host.docker.internal:11434
+ENV KW_URL http://localhost:11434
 
 # Just add one document to the db
 RUN find ./doc-sle -name zypper.xml -type f | xargs ./kowalski database add doc-sle
