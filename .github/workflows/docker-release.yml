@@ -24,18 +24,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and Push Docker Image
-        id: build-push
-        uses: docker/build-push-action@v5
+      - name: Build Image with Buildah
+        uses: redhat-actions/buildah-build@v2
         with:
+          containerfiles: Dockerfile
+          image: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+          tags: ${{ github.sha }}
           push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}
-          labels: |
-            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.source=${{ github.event.repository.html_url }}/commit/${{ github.sha }}
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Image details
         if: steps.build-push.outputs.digest
