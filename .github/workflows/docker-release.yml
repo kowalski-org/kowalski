@@ -15,23 +15,38 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Set Image Name and Tags
+        id: image_info
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/kowalski-binary
+          IMAGE_TAG_SHA=${{ github.sha }}
+          IMAGE_TAG_LATEST=latest
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG_SHA=$IMAGE_TAG_SHA" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG_LATEST=$IMAGE_TAG_LATEST" >> $GITHUB_OUTPUT
+
       - name: Build Image with Buildah
         id: build_image
         uses: redhat-actions/buildah-build@v2
         with:
           containerfiles: Dockerfile
-          image: kowalski-binary
-          tags: ${{ github.sha }}
+          image: ${{ steps.image_info.outputs.image_name }}
+          tags: ${{ steps.image_info.outputs.image_tag_sha }},${{ steps.image_info.outputs.image_tag_latest }}
 
       - name: Push to GHCR
+        id: push
         uses: redhat-actions/push-to-registry@v2
         with:
-          image: ${{ steps.build_image.outputs.image }}
-          tags: ${{ steps.build_image.outputs.tags }}
-          registry:  ghcr.io/${{ github.repository_owner }}
+          image: ${{ steps.image_info.outputs.image_name }}
+          tags: ${{ steps.image_info.outputs.image_tag_sha }},${{ steps.image_info.outputs.image_tag_latest }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
+
       - name: Image details
-        if: steps.build-push.outputs.digest
+        if: steps.push.outputs.digest
         run: |
-          echo "${{ toJSON(steps.push.outputs) }}"
+          echo "Image: ${{ steps.push.outputs.image }}"
+          echo "Tags: ${{ steps.push.outputs.tags }}"
+          echo "Digest: ${{ steps.push.outputs.digest }}"
+          echo "Full Output: ${{ toJSON(steps.push.outputs) }}"
