@@ -18,7 +18,7 @@ jobs:
       - name: Set Image Name and Tags
         id: image_info
         run: |
-          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/kowalski-binary
+          IMAGE_NAME=${{ github.repository_owner }}/kowalski-binary
           IMAGE_TAG_SHA=${{ github.sha }}
           IMAGE_TAG_LATEST=latest
           echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_OUTPUT
