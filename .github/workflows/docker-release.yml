@@ -21,7 +21,7 @@ jobs:
         with:
           containerfiles: Dockerfile
           image: kowalski-binary
-          tags: latest ${{ github.sha }}
+          tags: ${{ github.sha }}
 
       - name: Push to GHCR
         uses: redhat-actions/push-to-registry@v2
