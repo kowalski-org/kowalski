@@ -31,14 +31,18 @@ jobs:
         with:
           containerfiles: Dockerfile
           image: ${{ steps.image_info.outputs.image_name }}
-          tags: ${{ steps.image_info.outputs.image_tag_sha }},${{ steps.image_info.outputs.image_tag_latest }}
+          tags: |
+            ${{ steps.image_info.outputs.image_tag_sha }}
+            ${{ steps.image_info.outputs.image_tag_latest }}
 
       - name: Push to GHCR
         id: push
         uses: redhat-actions/push-to-registry@v2
         with:
           image: ${{ steps.image_info.outputs.image_name }}
-          tags: ${{ steps.image_info.outputs.image_tag_sha }},${{ steps.image_info.outputs.image_tag_latest }}
+          tags: |
+            ${{ steps.image_info.outputs.image_tag_sha }}
+            ${{ steps.image_info.outputs.image_tag_latest }}
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
