@@ -11,11 +11,6 @@ jobs:
     permissions:
       packages: write
       contents: read # For actions/checkout to fetch code
-    services:
-      ollama:
-        image: ollama/ollama:latest
-        ports:
-          - 11434:11434 # Expose the default Ollama API port
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
