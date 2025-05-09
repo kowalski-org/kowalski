@@ -62,7 +62,7 @@ jobs:
             ollama/ollama:latest ollama serve
       - name: Clone external repo
         run:  |
-          git clone https://github.com/openSUSE/doc-sle /tmp/suseDocRepo
+          git clone https://github.com/SUSE/doc-sle /tmp/suseDocRepo
       - name: Find files
         id: find_files
         run: |
