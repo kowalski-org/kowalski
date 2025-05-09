@@ -1,4 +1,4 @@
-FROM  registry.opensuse.org/opensuse/tumbleweed:latest AS builder
+FROM  registry.opensuse.org/opensuse/tumbleweed:latest AS build
 MAINTAINER "Christian Goll <cgoll@suse.com>"
 RUN  zypper ar https://download.opensuse.org/repositories/science:/machinelearning/openSUSE_Tumbleweed/science:machinelearning.repo &&\
    zypper --gpg-auto-import-keys ref &&\
@@ -15,6 +15,6 @@ RUN  zypper ar https://download.opensuse.org/repositories/science:/machinelearni
 COPY --from=build /kowalski/kowalski /kowalski/kowalski
 
 ENV KW_DATABASE=/suseDoc
-ENV KW_URL=http://localhost:11434
+ENV KW_URL=http://host.docker.internal:11434
 
-ENTRYPOINT "/kowalski/kowalski"
+ENTRYPOINT ["/kowalski/kowalski"]
