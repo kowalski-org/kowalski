@@ -66,9 +66,8 @@ jobs:
       - name: Find files
         id: find_files
         run: |
-          FILE_LIST=$(find /tmp/suseDocRepo -type f -name \*xml)
-          echo "FILE_LIST=$FILE_LIST" >> $GITHUB_OUTPUT
-          mkdir /tmp/suseDoc
+          export xml_list=`find /tmp/suseDocRepo -type f -name \*xml`
+          echo "FILE_LIST=${xml_list}" >> $GITHUB_OUTPUT
       
       - name: Run kowalski-binary container
         run: |
