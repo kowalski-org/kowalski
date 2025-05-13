@@ -65,8 +65,7 @@ jobs:
         run: |
           docker run -d \
             --name ollama --network ollama-net \
-            -p 11434:11434 \
-            ollama/ollama:latest ollama serve
+            -p 11434:11434 
       - name: Clone external repo
         run:  |
           git clone --depth 1 https://github.com/SUSE/doc-sle /tmp/suseDocRepo
