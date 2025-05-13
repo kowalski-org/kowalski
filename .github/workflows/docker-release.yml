@@ -11,6 +11,11 @@ jobs:
     permissions:
       packages: write
       contents: read # For actions/checkout to fetch code
+    # services:
+    #   ollama:
+    #     image: ollama/ollama:latest
+    #     ports:
+    #       - 11434:11434 # Expose the default Ollama API port
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -54,30 +59,29 @@ jobs:
           echo "Tags: ${{ steps.push.outputs.tags }}"
           echo "Digest: ${{ steps.push.outputs.digest }}"
           echo "Full Output: ${{ toJSON(steps.push.outputs) }}"
+      - name: Create ollama network
+        run: docker network create ollama-net
       - name: Run ollama service
         run: |
           docker run -d \
-            --name ollama-container \
+            --name ollama --network ollama-net \
             -p 11434:11434 \
-            ollama/ollama:latest ollama serve
+            ollama/ollama:latest
       - name: Clone external repo
         run:  |
-          git clone https://github.com/SUSE/doc-sle /tmp/suseDocRepo
-      - name: Find files
-        id: find_files
-        run: |
-          FILE_LIST=$(find /tmp/suseDocRepo -type f -name \*xml)
-          echo "FILE_LIST=$FILE_LIST" >> $GITHUB_OUTPUT
-          mkdir /tmp/suseDoc
-      
+          git clone --depth 1 https://github.com/SUSE/doc-sle /tmp/suseDocRepo
       - name: Run kowalski-binary container
         run: |
-          docker run -d \
+          find /tmp/suseDocRepo -type f -name "*.xml" | xargs \
+          docker run \
             --name kowalski-container \
+            --network ollama-net \
             -v /tmp/suseDocRepo:/tmp/suseDocRepo \
-            -v /tmp/suseDoc:/tmp/suseDoc
-            ${{ steps.image_info.outputs.image_name }}:${{ steps.image_info.outputs.image_tag_sha }} \
-            ${{ steps.find_files.outputs.FILE_LIST }}
+            -v /tmp/suseDoc:/tmp/suseDoc \
+            -e KW_URL=http://ollama:11434/ \
+            --link ollama:ollama \
+            ghcr.io/${{ steps.image_info.outputs.image_name }}:${{ steps.image_info.outputs.image_tag_sha }} \
+            database add
       - name: Create archive of /suseDoc
         run: |
          tar -czvf /tmp/suseDoc.tar.gz /tmp/suseDoc
