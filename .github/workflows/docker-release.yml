@@ -66,11 +66,11 @@ jobs:
       - name: Run kowalski-binary container
         run: |
           find /tmp/suseDocRepo -type f -name "*.xml" | xargs \
-          docker run -d \
+          docker run \
             --name kowalski-container \
             -v /tmp/suseDocRepo:/tmp/suseDocRepo \
             -v /tmp/suseDoc:/tmp/suseDoc
-            ${{ steps.image_info.outputs.image_name }}:${{ steps.image_info.outputs.image_tag_sha }} \
+            ghcr.io/${{ steps.image_info.outputs.image_name }}:${{ steps.image_info.outputs.image_tag_sha }} \
             database add
       - name: Create archive of /suseDoc
         run: |
