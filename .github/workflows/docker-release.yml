@@ -11,11 +11,11 @@ jobs:
     permissions:
       packages: write
       contents: read # For actions/checkout to fetch code
-    services:
-      ollama:
-        image: ollama/ollama:latest
-        ports:
-          - 11434:11434 # Expose the default Ollama API port
+    # services:
+    #   ollama:
+    #     image: ollama/ollama:latest
+    #     ports:
+    #       - 11434:11434 # Expose the default Ollama API port
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -59,6 +59,12 @@ jobs:
           echo "Tags: ${{ steps.push.outputs.tags }}"
           echo "Digest: ${{ steps.push.outputs.digest }}"
           echo "Full Output: ${{ toJSON(steps.push.outputs) }}"
+      - name: Run ollama service
+        run: |
+          docker run -d \
+            --name ollama --network ollama-net \
+            -p 11434:11434 \
+            ollama/ollama:latest ollama serve
       - name: Clone external repo
         run:  |
           git clone --depth 1 https://github.com/SUSE/doc-sle /tmp/suseDocRepo
@@ -67,7 +73,7 @@ jobs:
           find /tmp/suseDocRepo -type f -name "*.xml" | xargs \
           docker run \
             --name kowalski-container \
-            --network host \
+            --network ollama-net \
             -v /tmp/suseDocRepo:/tmp/suseDocRepo \
             -v /tmp/suseDoc:/tmp/suseDoc \
             -e KW_URL=http://ollama:11434/ \
