@@ -67,6 +67,7 @@ jobs:
           find /tmp/suseDocRepo -type f -name "*.xml" | xargs \
           docker run \
             --name kowalski-container \
+            --network host \
             -v /tmp/suseDocRepo:/tmp/suseDocRepo \
             -v /tmp/suseDoc:/tmp/suseDoc \
             -e KW_URL=http://ollama:11434/ \
