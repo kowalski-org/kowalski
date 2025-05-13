@@ -59,6 +59,8 @@ jobs:
           echo "Tags: ${{ steps.push.outputs.tags }}"
           echo "Digest: ${{ steps.push.outputs.digest }}"
           echo "Full Output: ${{ toJSON(steps.push.outputs) }}"
+      - name: Create ollama network
+        run: docker network create ollama-net
       - name: Run ollama service
         run: |
           docker run -d \
