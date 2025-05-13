@@ -62,21 +62,16 @@ jobs:
             ollama/ollama:latest ollama serve
       - name: Clone external repo
         run:  |
-          git clone https://github.com/SUSE/doc-sle /tmp/suseDocRepo
-      - name: Find files
-        id: find_files
-        run: |
-          xml_files=$(find /tmp/suseDocRepo -type f -name "*.xml" -print0 | xargs -0 printf "%s\n")
-          echo "FILE_LIST=${xml_list}" >> $GITHUB_OUTPUT
-      
+          git clone --depth 1 https://github.com/SUSE/doc-sle /tmp/suseDocRepo
       - name: Run kowalski-binary container
         run: |
+          find /tmp/suseDocRepo -type f -name "*.xml" | xargs \
           docker run -d \
             --name kowalski-container \
             -v /tmp/suseDocRepo:/tmp/suseDocRepo \
             -v /tmp/suseDoc:/tmp/suseDoc
             ${{ steps.image_info.outputs.image_name }}:${{ steps.image_info.outputs.image_tag_sha }} \
-            ${{ steps.find_files.outputs.FILE_LIST }}
+            database add
       - name: Create archive of /suseDoc
         run: |
          tar -czvf /tmp/suseDoc.tar.gz /tmp/suseDoc
