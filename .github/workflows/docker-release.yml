@@ -69,7 +69,7 @@ jobs:
           docker run \
             --name kowalski-container \
             -v /tmp/suseDocRepo:/tmp/suseDocRepo \
-            -v /tmp/suseDoc:/tmp/suseDoc
+            -v /tmp/suseDoc:/tmp/suseDoc \
             ghcr.io/${{ steps.image_info.outputs.image_name }}:${{ steps.image_info.outputs.image_tag_sha }} \
             database add
       - name: Create archive of /suseDoc
