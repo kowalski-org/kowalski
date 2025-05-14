@@ -21,7 +21,7 @@ jobs:
       - name: Create vendor and tar ball
         run: |
           go mod vendor
-          tar -cJf --exclude .git kowalski-${{ github.ref_name }}.tar.xz
+          tar -cJf --exclude .git kowalski-${{ github.ref_name }}.tar.xz .
       - name: Upload vendored tar ball
         uses: xresloader/upload-to-github-release@v1
         env:
