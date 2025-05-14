@@ -9,16 +9,13 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      packages: write
-      contents: read # For actions/checkout to fetch code
-    # services:
-    #   ollama:
-    #     image: ollama/ollama:latest
-    #     ports:
-    #       - 11434:11434 # Expose the default Ollama API port
+      packages: write-all
+      contents: read
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set Image Name and Tags
         id: image_info
