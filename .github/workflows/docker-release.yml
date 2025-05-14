@@ -40,12 +40,6 @@ jobs:
             ${{ steps.image_info.outputs.image_tag_sha }}
             ${{ steps.image_info.outputs.image_tag_latest }}
 
-      - name: Create Manifest List
-        id: create_manifest
-        run: |
-          buildah manifest create ${{ steps.image_info.outputs.image_name }}-manifest
-          buildah manifest add ${{ steps.image_info.outputs.image_name }}-manifest docker-daemon:${{ steps.image_info.outputs.image_name }}:${{ steps.image_info.outputs.image_tag_sha }}
-          buildah manifest push ${{ steps.image_info.outputs.image_name }}-manifest docker://${{ steps.image_info.outputs.image_name }}:${{ steps.image_info.outputs.image_tag_sha }}
       - name: Push to GHCR
         id: push
         uses: redhat-actions/push-to-registry@v2
