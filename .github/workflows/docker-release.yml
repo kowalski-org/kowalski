@@ -86,9 +86,10 @@ jobs:
         run: |
          tar -czvf /tmp/suseDoc.tar.gz /tmp/suseDoc
       - name: Upload /suseDoc as asset
-        uses: actions/upload-release-asset@v1
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ github.event.release.upload_url }} # This assumes you are running on a release.
-          asset_path: /tmp/suseDoc.tar.gz
-          asset_name: suseDoc.tar.gz
-          asset_content_type: application/gzip
+          file: /tmp/suseDoc.tar.gz
+          overwrite: true
+          update_latest_release: true
