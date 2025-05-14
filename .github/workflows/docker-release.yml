@@ -88,14 +88,14 @@ jobs:
             --name kowalski-container \
             --network ollama-net \
             -v /tmp/suseDocRepo:/tmp/suseDocRepo \
-            -v /tmp/suseDoc:/tmp/suseDoc \
+            -v /tmp/suseDoc:/suseDoc \
             -e KW_URL=http://ollama:11434/ \
             --link ollama:ollama \
             ghcr.io/${{ steps.image_info.outputs.image_name }}:${{ steps.image_info.outputs.image_tag_sha }} \
             database add
       - name: Create archive of /suseDoc
         run: |
-         tar -czvf /tmp/suseDoc.tar.gz /tmp/suseDoc
+         tar -C /tmp -czvf /tmp/suseDoc.tar.gz suseDoc
       - name: Upload /suseDoc as asset
         uses: xresloader/upload-to-github-release@v1
         env:
