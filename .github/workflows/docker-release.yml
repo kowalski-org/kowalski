@@ -14,6 +14,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.24
+      - name: Create vendor and tar ball
+        run: |
+          go mod vendor
+          tar -cJf --exclude .git kowalski-${{ github.ref_name }}.tar.xz
+      - name: Upload vendored tar ball
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: kowalski-${{ github.ref_name }}.tar.xz
+          overwrite: true
+          update_latest_release: true
 
       - name: Set Image Name and Tags
         id: image_info
@@ -67,7 +83,7 @@ jobs:
           git clone --depth 1 https://github.com/SUSE/doc-sle /tmp/suseDocRepo
       - name: Run kowalski-binary container
         run: |
-          find /tmp/suseDocRepo -type f -name "zypper.xml" | xargs \
+          find /tmp/suseDocRepo -type f -name "*.xml" | xargs \
           docker run \
             --name kowalski-container \
             --network ollama-net \
