@@ -1,9 +1,8 @@
 name: Build and Push Docker Image on Release
 
 on:
-  push:
-    branches:
-      - release
+  release:
+    types: [published]
 
 jobs:
   build-and-push:
@@ -40,6 +39,12 @@ jobs:
             ${{ steps.image_info.outputs.image_tag_sha }}
             ${{ steps.image_info.outputs.image_tag_latest }}
 
+      - name: Create Manifest List
+        id: create_manifest
+        run: |
+          buildah manifest create ${{ steps.image_info.outputs.image_name }}-manifest
+          buildah manifest add ${{ steps.image_info.outputs.image_name }}-manifest docker-daemon:${{ steps.image_info.outputs.image_name }}:${{ steps.image_info.outputs.image_tag_sha }}
+          buildah manifest push ${{ steps.image_info.outputs.image_name }}-manifest docker://${{ steps.image_info.outputs.image_name }}:${{ steps.image_info.outputs.image_tag_sha }}
       - name: Push to GHCR
         id: push
         uses: redhat-actions/push-to-registry@v2
@@ -72,7 +77,7 @@ jobs:
           git clone --depth 1 https://github.com/SUSE/doc-sle /tmp/suseDocRepo
       - name: Run kowalski-binary container
         run: |
-          find /tmp/suseDocRepo -type f -name "*.xml" | xargs \
+          find /tmp/suseDocRepo -type f -name "zypper.xml" | xargs \
           docker run \
             --name kowalski-container \
             --network ollama-net \
