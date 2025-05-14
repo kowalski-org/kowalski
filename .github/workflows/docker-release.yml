@@ -8,9 +8,7 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    permissions:
-      packages: write-all
-      contents: read
+    permissions: write-all
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
