@@ -5,14 +5,19 @@ Kowalski is an AI which helps to configure your system
 
 ## RPM
 
-RPM packages are available in [OBS](https://build.opensuse.org/package/show/science:machinelearning/kowalski) in `science:machinelearning` project.
+RPM packages are available in [OBS](https://build.opensuse.org/package/show/science:machinelearning/kowalski) in the `science:machinelearning` project.
 
-[!Note]
+[!NOTE]
 
 Make sure that an ollama instance is started in a seperate terminal with
+
 ```
   ollama serve
 ```
+
+## Container
+
+You can run kowalksi as container which is available at the [gthub registry](https://github.com/users/mslacken/packages/container/package/kowalski-binary)
 
 ## Source
 
