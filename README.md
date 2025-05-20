@@ -1,7 +1,20 @@
 # Kowalski
 Kowalski is an AI which helps to configure your system
 
-## Installation
+# Installation
+
+## RPM
+
+RPM packages are available in [OBS](https://build.opensuse.org/package/show/science:machinelearning/kowalski) in `science:machinelearning` project.
+
+[!Note]
+
+Make sure that an ollama instance is started in a seperate terminal with
+```
+  ollama serve
+```
+
+## Source
 
 You need following packages installed
 * `go`
