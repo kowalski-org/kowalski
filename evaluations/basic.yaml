@@ -11,4 +11,8 @@ evaluations:
     prompt: "How can I disable root login for ssh"
   - name: "Create User Foo"
     prompt: "How can I create an account for user foo"
+  - name: "Cert"
+    prompt: "How to add a certificate to Apache2"
+  - name: "Autoyast"
+    prompt: "Can you create a minimak autoyast file"
   
