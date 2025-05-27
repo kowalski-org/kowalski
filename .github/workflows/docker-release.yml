@@ -6,7 +6,7 @@ on:
     types: [published]
 
 jobs:
-  build-and-push:
+  build-and-push-binary:
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
@@ -45,7 +45,7 @@ jobs:
         id: build_image
         uses: redhat-actions/buildah-build@v2
         with:
-          containerfiles: Dockerfile
+          containerfiles: Dockerfile.binary
           image: ${{ steps.image_info.outputs.image_name }}
           tags: |
             ${{ steps.image_info.outputs.image_tag_sha }}
@@ -70,6 +70,11 @@ jobs:
           echo "Tags: ${{ steps.push.outputs.tags }}"
           echo "Digest: ${{ steps.push.outputs.digest }}"
           echo "Full Output: ${{ toJSON(steps.push.outputs) }}"
+  build-and-publish-db:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    needs: build-and-push-binary
+    steps:
       - name: Create ollama network
         run: docker network create ollama-net
       - name: Run ollama service
@@ -104,3 +109,47 @@ jobs:
           file: /tmp/suseDoc.tar.gz
           overwrite: true
           update_latest_release: true
+  build-with-db:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    needs: [build-and-push-binary,build-and-push-db]
+    jobs:
+      - name: Set Image Name and Tags
+        id: image_info
+        run: |
+          IMAGE_NAME=${{ github.repository_owner }}/kowalski
+          IMAGE_TAG_SHA=${{ github.sha }}
+          IMAGE_TAG_LATEST=latest
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG_SHA=$IMAGE_TAG_SHA" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG_LATEST=$IMAGE_TAG_LATEST" >> $GITHUB_OUTPUT
+
+      - name: Build Image with Buildah
+        id: build_image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          containerfiles: Dockerfile
+          image: ${{ steps.image_info.outputs.image_name }}
+          tags: |
+            ${{ steps.image_info.outputs.image_tag_sha }}
+            ${{ steps.image_info.outputs.image_tag_latest }}
+
+      - name: Push to GHCR
+        id: push
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.image_info.outputs.image_name }}
+          tags: |
+            ${{ steps.image_info.outputs.image_tag_sha }}
+            ${{ steps.image_info.outputs.image_tag_latest }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Image details
+        if: steps.push.outputs.digest
+        run: |
+          echo "Image: ${{ steps.push.outputs.image }}"
+          echo "Tags: ${{ steps.push.outputs.tags }}"
+          echo "Digest: ${{ steps.push.outputs.digest }}"
+          echo "Full Output: ${{ toJSON(steps.push.outputs) }}"
