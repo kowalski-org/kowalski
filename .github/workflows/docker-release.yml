@@ -113,7 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: write-all
     needs: [build-and-push-binary,build-and-push-db]
-    jobs:
+    steps:
       - name: Set Image Name and Tags
         id: image_info
         run: |
