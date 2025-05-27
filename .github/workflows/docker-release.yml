@@ -96,7 +96,7 @@ jobs:
             -v /tmp/suseDoc:/suseDoc \
             -e KW_URL=http://ollama:11434/ \
             --link ollama:ollama \
-            ghcr.io/{{ github.repository_owner }}/kowalski-binary:latest \
+            ghcr.io/${{ github.repository_owner }}/kowalski-binary:latest \
             database add
       - name: Create archive of /suseDoc
         run: |
