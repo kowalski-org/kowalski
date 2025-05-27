@@ -27,7 +27,7 @@ for better answers.`,
 	},
 }
 
-// send jus a simple request from the command line, is hidden
+// send just a simple request from the command line, is hidden
 // as intended for testing and debugging
 var reqCmd = &cobra.Command{
 	Use:   "request",
@@ -51,7 +51,6 @@ var reqCmd = &cobra.Command{
 		go ollamaconnector.Ollamasettings.SendTaskStream(prompt, ch)
 		for resp := range ch {
 			respStr = append(respStr, resp.Response)
-			log.Debug(resp.Response)
 		}
 		log.Infof("Kowalski: %s", strings.Join(respStr, ``))
 		return nil

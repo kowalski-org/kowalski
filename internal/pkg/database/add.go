@@ -96,7 +96,7 @@ func (kn *Knowledge) GetInfos(question string, collections []string, nrDocs int6
 
 				}
 				dbdoc, err = kn.db.FindById(collection, id[0])
-				log.Debugf("int collection %s, getting doc: %s", collection, id[0])
+				log.Debugf("in collection %s, getting doc: %s", collection, id[0])
 				if err != nil {
 					return nil, err
 				}

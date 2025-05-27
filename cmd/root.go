@@ -51,7 +51,7 @@ distribution documentation.`,
 			})
 		},
 	}
-	rootCmd.PersistentFlags().StringVar(&ollamaconnector.Ollamasettings.LLM, "modell", "gemma3:4b", "LLM modell to be used for answers")
+	rootCmd.PersistentFlags().StringVar(&ollamaconnector.Ollamasettings.LLM, "modell", "gemma3:1b", "LLM modell to be used for answers")
 	rootCmd.PersistentFlags().StringVar(&ollamaconnector.Ollamasettings.EmbeddingModel, "embedding", "nomic-embed-text", "embedding model for the knowledge database")
 	rootCmd.PersistentFlags().StringVar(&ollamaconnector.Ollamasettings.OllamaURL, "url", "http://localhost:11434", "base URL for ollama requests")
 	rootCmd.PersistentFlags().StringVar(&database.DBLocation, "database", "/usr/lib/kowalski", "path to knowledge database")

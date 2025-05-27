@@ -14,5 +14,5 @@ evaluations:
   - name: "Cert"
     prompt: "How to add a certificate to Apache2"
   - name: "Autoyast"
-    prompt: "Can you create a minimak autoyast file"
+    prompt: "Can you create a minimal autoyast file"
   

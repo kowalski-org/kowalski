@@ -118,6 +118,7 @@ func (info *Information) CreateEmbedding() (err error) {
 			return err
 		}
 		if len(embResp.Embeddings) == 0 {
+			log.Debugf("embedding text: %s", []string{str})
 			return fmt.Errorf("couldn't calculate embedding")
 		}
 		info.Sections[i].EmbeddingVec = embResp.Embeddings[0]

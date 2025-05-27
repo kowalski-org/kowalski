@@ -93,7 +93,7 @@ So the input file foo.yaml will create an output like foo.yaml.abcd1234.`,
 		if err != nil {
 			return err
 		}
-		err = os.WriteFile(id.String()+".yaml", yml, 0644)
+		err = os.WriteFile("eval-"+id.String()+".yaml", yml, 0644)
 		return err
 	},
 	Args: cobra.MinimumNArgs(1),

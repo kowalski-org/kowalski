@@ -1,7 +1,6 @@
 package ollamaconnector
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -307,13 +306,15 @@ func (settings *Settings) PullModel(name string) (err error) {
 	if httpResp.StatusCode != http.StatusOK {
 		return errors.New("couldn't pull modell")
 	}
-	reader := bufio.NewReader(httpResp.Body)
-	for {
-		line, err := reader.ReadBytes('\n')
-		if err != nil {
-			break
-		}
-		log.Debug(string(line))
-	}
+	/*
+		reader := bufio.NewReader(httpResp.Body)
+			for {
+				line, err := reader.ReadBytes('\n')
+				if err != nil {
+					break
+				}
+				log.Debugf("pulling: %s", string(line))
+			}
+	*/
 	return nil
 }
