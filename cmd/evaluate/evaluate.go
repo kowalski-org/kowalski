@@ -71,6 +71,7 @@ So the input file foo.yaml will create an output like foo.yaml.abcd1234.`,
 			if err != nil {
 				return err
 			}
+			log.Debugf("Full prompt: %s", prompt)
 			resp, err := ollamaconnector.Ollamasettings.SendTask(prompt)
 			result := evaluate.EvlatuationResult{
 				Response:           resp.Response,

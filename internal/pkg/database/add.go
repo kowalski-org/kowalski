@@ -120,6 +120,7 @@ func (kn *Knowledge) GetInfos(question string, collections []string, nrDocs int6
 				Section: baseInfo.Sections[sectIndex],
 				Dist:    lengthVec[i],
 			}
+			log.Debugf("Doc title: %s", ret.Title)
 			documents = append(documents, ret)
 		}
 	}
