@@ -114,6 +114,10 @@ jobs:
     permissions: write-all
     needs: [build-and-push-binary,build-and-publish-db]
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set Image Name and Tags
         id: image_info
         run: |
