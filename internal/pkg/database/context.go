@@ -20,7 +20,7 @@ type PromptInfo struct {
 }
 
 func (kn Knowledge) GetContext(msg string, collections []string, location file.Location, maxSize int) (string, error) {
-	log.Debugf("Getting context(%d) for %s in %s\n", maxSize, msg, collections)
+	log.Debugf("creating context(%d) for '%s' in '%s'\n", maxSize, msg, collections)
 	promptInfo := GetSystemInfo()
 	promptInfo.Task = msg
 	funcMap := sprig.FuncMap()

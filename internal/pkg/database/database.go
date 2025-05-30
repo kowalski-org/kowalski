@@ -96,7 +96,11 @@ func (kn *Knowledge) CreateIndex(collections []string) (err error) {
 				if err != nil {
 					panic("failed to add document to faiss index")
 				}
-				kn.faissId = append(kn.faissId, doc.ObjectId()+fmt.Sprintf(":%d", i))
+				index := i
+				if sec.IsAlias {
+					index = 0
+				}
+				kn.faissId = append(kn.faissId, doc.ObjectId()+fmt.Sprintf(":%d", index))
 			}
 			return true
 		})
@@ -104,4 +108,40 @@ func (kn *Knowledge) CreateIndex(collections []string) (err error) {
 	// \TODO close db
 	// kn.db.Close()
 	return
+}
+
+// drop the information from the database. As well the clover document id is matched
+// as the hash of the file which was used to add the documentation
+func (kn *Knowledge) DropInformation(docId string) error {
+	collections, err := kn.db.ListCollections()
+	if err != nil {
+		return err
+	}
+	for _, coll := range collections {
+		doc, err := kn.db.FindById(coll, docId)
+		if err != nil {
+			return err
+		}
+		if doc != nil {
+			err = kn.db.DeleteById(coll, docId)
+			log.Infof("deleted collection/document: %s/%s", coll, docId)
+			return err
+		}
+
+		doc, err = kn.db.FindFirst(query.NewQuery(coll).Where(query.Field("Hash").Eq(docId)))
+		if err != nil {
+			return err
+		}
+		if doc != nil {
+			log.Debugf("found document with hash: %s: %s -> %s", coll, docId, doc.ObjectId())
+			err = kn.db.DeleteById(coll, doc.ObjectId())
+			if err != nil {
+				return err
+			}
+			log.Infof("deleted document: %s", docId)
+			return nil
+
+		}
+	}
+	return fmt.Errorf("document wasn't found in db: %s", docId)
 }

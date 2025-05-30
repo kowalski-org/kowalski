@@ -1,19 +1,19 @@
 package databasecmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
 
 	"github.com/charmbracelet/log"
-
-	jsonpkg "encoding/json"
+	"gopkg.in/yaml.v3"
 
 	"github.com/openSUSE/kowalski/internal/pkg/database"
 	"github.com/openSUSE/kowalski/internal/pkg/docbook"
+	"github.com/openSUSE/kowalski/internal/pkg/information"
 	"github.com/openSUSE/kowalski/internal/pkg/templates"
 	"github.com/spf13/cobra"
-	yamlpkg "gopkg.in/yaml.v3"
 )
 
 // databaseCmd represents the database command
@@ -27,34 +27,78 @@ permanenetly remove databases.`,
 	},
 }
 
+type inputFormat string
+
+const (
+	textIn inputFormat = "text"
+	yamlIn inputFormat = "yaml"
+	jsonIn inputFormat = "json"
+	xmlIn  inputFormat = "xml"
+)
+
+func (f *inputFormat) String() string {
+	return string(*f)
+}
+
+func (f *inputFormat) Set(str string) error {
+	switch str {
+	case "text", "yaml", "json", "xml":
+		*f = inputFormat(str)
+		return nil
+	default:
+		return fmt.Errorf("Unkown input format: %s", str)
+	}
+}
+
+func (f *inputFormat) Type() string {
+	return "infoFormat"
+}
+
+var iFormat inputFormat
 var databaseAdd = &cobra.Command{
 	Use:        "add DATABASE FILE(s)",
 	ArgAliases: []string{"create", "ad", "new"},
 	Short:      "Add document(s) to the given database",
 	Long: `Add a document extracted from a file
 to the given database and create embeddings for it.`,
-	Args: cobra.MinimumNArgs(1),
+	Args: cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		cmd.Args = cobra.MinimumNArgs(2)
 		db, err := database.New()
 		if err != nil {
 			return err
 		}
-		for i := range args[1:] {
-			info, err := docbook.ParseDocBook(args[i+1])
-			if err != nil {
-				return err
-			}
-			if !info.Empty() {
-				err = db.AddInformation(args[0], info)
+		switch iFormat {
+		case xmlIn:
+			for i := range args[1:] {
+				info, err := docbook.ParseDocBook(args[i+1])
 				if err != nil {
-					return err
+					log.Warnf("couldn't read file: %s", err)
+					continue
 				}
-			} else {
-				log.Warnf("file was empty: %s", args[i+1])
+				if !info.Empty() {
+					err = db.AddInformation(args[0], info)
+					if err != nil {
+						return err
+					}
+				} else {
+					log.Warnf("file was empty: %s", args[i+1])
+				}
 			}
+			return nil
+		case yamlIn:
+			for i := range args[1:] {
+				info, err := information.ReadCurated(args[i+1])
+				if err != nil {
+					log.Warnf("couldn't read file: %s", err)
+					continue
+				}
+				err = db.AddInformation(args[0], info)
+			}
+			return nil
+		default:
+			return fmt.Errorf("unknown input type")
 		}
-		return nil
+
 	},
 	Annotations: map[string]string{},
 }
@@ -93,35 +137,34 @@ var databaseList = &cobra.Command{
 	},
 }
 
-type infoFormat string
+type outputFormat string
 
 const (
-	title infoFormat = "title"
-	full  infoFormat = "full"
-	yaml  infoFormat = "yaml"
-	json  infoFormat = "json"
+	titleOut outputFormat = "title"
+	fullOut  outputFormat = "full"
+	yamlOut  outputFormat = "yaml"
+	jsonOut  outputFormat = "json"
 )
 
-func (f *infoFormat) String() string {
+func (f *outputFormat) String() string {
 	return string(*f)
 }
 
-func (f *infoFormat) Set(str string) error {
+func (f *outputFormat) Set(str string) error {
 	switch str {
 	case "title", "full", "yaml", "json":
-		*f = infoFormat(str)
+		*f = outputFormat(str)
 		return nil
 	default:
 		return fmt.Errorf("Unkown output format: %s", str)
 	}
 }
 
-func (f *infoFormat) Type() string {
+func (f *outputFormat) Type() string {
 	return "infoFormat"
 }
 
-var oFormat infoFormat
-
+var oFormat outputFormat
 var databaseGet = &cobra.Command{
 	Use:        "get ID",
 	ArgAliases: []string{"show", "cat"},
@@ -136,13 +179,13 @@ var databaseGet = &cobra.Command{
 			return err
 		}
 		switch oFormat {
-		case full:
+		case fullOut:
 			fmt.Println(info.Render(templates.RenderInfoWithMeta))
-		case yaml:
-			str, _ := yamlpkg.Marshal(info)
+		case yamlOut:
+			str, _ := yaml.Marshal(info)
 			fmt.Println(string(str))
-		case json:
-			str, _ := jsonpkg.MarshalIndent(info, "", "  ")
+		case jsonOut:
+			str, _ := json.MarshalIndent(info, "", "  ")
 			fmt.Println(string(str))
 		default:
 			fmt.Println(info.Render(templates.RenderTitleOnly))
@@ -176,21 +219,58 @@ var databaseCheck = &cobra.Command{
 		}
 		fmt.Println("Infos:")
 		for _, info := range infos {
-			str, _ := info.Render()
-			fmt.Println(str)
+
+			switch oFormat {
+			case fullOut:
+				fmt.Println(info.Render())
+			case yamlOut:
+				str, _ := yaml.Marshal(info)
+				fmt.Println(string(str))
+			case jsonOut:
+				str, _ := json.MarshalIndent(info, "", "  ")
+				fmt.Println(string(str))
+			default:
+				fmt.Printf("%s %s\n", info.Hash, info.Title)
+			}
 		}
 		return nil
 	},
 	Args: cobra.MinimumNArgs(1),
 }
 
+var dropDocuments = &cobra.Command{
+	Use:        "drop [DocumentId]",
+	Short:      "drop documents with given id from database",
+	ArgAliases: []string{"rm", "remove", "delete", "del"},
+	Args:       cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		db, err := database.New()
+		if err != nil {
+			log.Warnf("db error: %s", err)
+			return
+		}
+		for _, docId := range args {
+			err = db.DropInformation(docId)
+			if err != nil {
+				log.Warn(err)
+				return
+			}
+		}
+	},
+}
+
 func init() {
-	databaseGet.Flags().Var(&oFormat, "format", "format of the dump")
+	databaseGet.Flags().Var(&oFormat, "format", "format of the dump {full,title,json,yaml}")
+	databaseCheck.Flags().Var(&oFormat, "format", "format of the dump {full,title,json,yaml}")
+	databaseAdd.Flags().Var(&iFormat, "format", "format of the input {text,json,xml,yaml}")
+	// need to set as Var hasn't a default input
+	databaseAdd.Flags().Set("format", "xml")
 	databaseCmd.AddCommand(databaseAdd)
 	databaseCmd.AddCommand(databaseList)
 	databaseCmd.AddCommand(databaseCheck)
 	databaseCheck.Flags().Int64P("number", "n", 5, "number of documents to retreive")
 	databaseCmd.AddCommand(databaseGet)
+	databaseCmd.AddCommand(dropDocuments)
 }
 func GetCommand() *cobra.Command {
 	return databaseCmd

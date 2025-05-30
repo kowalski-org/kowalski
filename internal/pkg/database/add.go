@@ -56,7 +56,6 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 		log.Infof("found document '%s': %s %s", info.Source, docs[0].ObjectId(), info.Hash)
 	}
 	return nil
-
 }
 
 // Get the infos out of the database for the given question. The returned documents only
@@ -92,11 +91,11 @@ func (kn *Knowledge) GetInfos(question string, collections []string, nrDocs int6
 				}
 				sectIndex, err = strconv.Atoi(id[1])
 				if err != nil {
-					return nil, errors.New("couln't get index of section")
+					return nil, errors.New("couldn't get index of section")
 
 				}
 				dbdoc, err = kn.db.FindById(collection, id[0])
-				log.Debugf("int collection %s, getting doc: %s", collection, id[0])
+				log.Debugf("in collection %s, getting doc: %s", collection, id[0])
 				if err != nil {
 					return nil, err
 				}
@@ -119,7 +118,9 @@ func (kn *Knowledge) GetInfos(question string, collections []string, nrDocs int6
 			ret := information.RetSection{
 				Section: baseInfo.Sections[sectIndex],
 				Dist:    lengthVec[i],
+				Hash:    baseInfo.Hash,
 			}
+			log.Debugf("Doc title: %s", ret.Title)
 			documents = append(documents, ret)
 		}
 	}

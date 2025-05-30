@@ -18,6 +18,7 @@ const filemaxsize = 2048
 
 type LineType string
 
+// types for doc book parsing
 const (
 	// values are gathered from the tags
 	Title     LineType = "title"
@@ -71,11 +72,13 @@ type Section struct {
 	Lines        []Line    `yaml:"Lines,omitempty"`
 	Files        []string  `yaml:"Files,omitempty"`
 	Commands     []string  `yaml:"Commands,omitempty"`
+	IsAlias      bool      `yaml:"IsAlias,comitempty"` // Title is an alias to first section
 }
 
 // data returned from db for the LLM modell
 type RetSection struct {
 	Dist float32
+	Hash string // hash which identifies base doc
 	Section
 }
 
@@ -118,6 +121,7 @@ func (info *Information) CreateEmbedding() (err error) {
 			return err
 		}
 		if len(embResp.Embeddings) == 0 {
+			log.Debugf("embedding text: %s", []string{str})
 			return fmt.Errorf("couldn't calculate embedding")
 		}
 		info.Sections[i].EmbeddingVec = embResp.Embeddings[0]
