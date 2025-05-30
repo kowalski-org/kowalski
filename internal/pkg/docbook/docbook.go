@@ -25,6 +25,7 @@ func ParseDocBook(filename string) (info information.Information, err error) {
 	doc.ReadSettings = etree.ReadSettings{
 		Entity: entities,
 	}
+	// read file handle
 	fileHandle, err := os.Open(filename)
 	if err != nil {
 		return info, err

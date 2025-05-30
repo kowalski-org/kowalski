@@ -11,6 +11,7 @@ import (
 
 	"github.com/openSUSE/kowalski/internal/pkg/database"
 	"github.com/openSUSE/kowalski/internal/pkg/docbook"
+	"github.com/openSUSE/kowalski/internal/pkg/information"
 	"github.com/openSUSE/kowalski/internal/pkg/templates"
 	"github.com/spf13/cobra"
 )
@@ -63,15 +64,16 @@ to the given database and create embeddings for it.`,
 	Args: cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		db, err := database.New()
+		if err != nil {
+			return err
+		}
 		switch iFormat {
 		case xmlIn:
-			if err != nil {
-				return err
-			}
 			for i := range args[1:] {
 				info, err := docbook.ParseDocBook(args[i+1])
 				if err != nil {
-					return err
+					log.Warnf("couldn't read file: %s", err)
+					continue
 				}
 				if !info.Empty() {
 					err = db.AddInformation(args[0], info)
@@ -81,6 +83,16 @@ to the given database and create embeddings for it.`,
 				} else {
 					log.Warnf("file was empty: %s", args[i+1])
 				}
+			}
+			return nil
+		case yamlIn:
+			for i := range args[1:] {
+				info, err := information.ReadCurated(args[i+1])
+				if err != nil {
+					log.Warnf("couldn't read file: %s", err)
+					continue
+				}
+				err = db.AddInformation(args[0], info)
 			}
 			return nil
 		default:
@@ -207,18 +219,49 @@ var databaseCheck = &cobra.Command{
 		}
 		fmt.Println("Infos:")
 		for _, info := range infos {
-			str, _ := info.Render()
-			fmt.Println(str)
+
+			switch oFormat {
+			case fullOut:
+				fmt.Println(info.Render())
+			case yamlOut:
+				str, _ := yaml.Marshal(info)
+				fmt.Println(string(str))
+			case jsonOut:
+				str, _ := json.MarshalIndent(info, "", "  ")
+				fmt.Println(string(str))
+			default:
+				fmt.Printf("%s %s\n", info.Hash, info.Title)
+			}
 		}
 		return nil
 	},
 	Args: cobra.MinimumNArgs(1),
 }
 
-// isText checks if the content appears to be text
+var dropDocuments = &cobra.Command{
+	Use:        "drop [DocumentId]",
+	Short:      "drop documents with given id from database",
+	ArgAliases: []string{"rm", "remove", "delete", "del"},
+	Args:       cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		db, err := database.New()
+		if err != nil {
+			log.Warnf("db error: %s", err)
+			return
+		}
+		for _, docId := range args {
+			err = db.DropInformation(docId)
+			if err != nil {
+				log.Warn(err)
+				return
+			}
+		}
+	},
+}
 
 func init() {
 	databaseGet.Flags().Var(&oFormat, "format", "format of the dump {full,title,json,yaml}")
+	databaseCheck.Flags().Var(&oFormat, "format", "format of the dump {full,title,json,yaml}")
 	databaseAdd.Flags().Var(&iFormat, "format", "format of the input {text,json,xml,yaml}")
 	// need to set as Var hasn't a default input
 	databaseAdd.Flags().Set("format", "xml")
@@ -227,6 +270,7 @@ func init() {
 	databaseCmd.AddCommand(databaseCheck)
 	databaseCheck.Flags().Int64P("number", "n", 5, "number of documents to retreive")
 	databaseCmd.AddCommand(databaseGet)
+	databaseCmd.AddCommand(dropDocuments)
 }
 func GetCommand() *cobra.Command {
 	return databaseCmd

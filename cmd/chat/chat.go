@@ -55,8 +55,9 @@ var reqCmd = &cobra.Command{
 		log.Infof("Kowalski: %s", strings.Join(respStr, ``))
 		return nil
 	},
-	Args:   cobra.MinimumNArgs(1),
-	Hidden: true,
+	Args:       cobra.MinimumNArgs(1),
+	ArgAliases: []string{"query", "ask", "q", "req", "r"},
+	Hidden:     true,
 }
 
 func init() {

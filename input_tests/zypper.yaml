@@ -1,0 +1,16 @@
+Id: zypper
+Text: |
+ Zypper is a command line tool for managing software. It can be used to add
+ package repositories, search for packages, install, remove, or update packages,
+ install patches, hardware drivers, verify dependencies, and more.
+ To install the software package foo use the command
+ <command>
+ zypper install foo
+ </command>
+Commands:
+  - zypper install foo
+Aliases:
+  - Install the package foo
+  - Get the software foo
+  - I want to install foo
+  - How do I get foo

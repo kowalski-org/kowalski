@@ -37,7 +37,8 @@ func (kn *Knowledge) ListCollections() (collections []string, err error) {
 	return kn.db.ListCollections()
 }
 
-// return the whole informaton assosciated with document
+// return the whole informaton assosciated with document, either by the clover
+// document id or the file hash
 func (kn *Knowledge) Get(id string) (information.Information, error) {
 	var info information.Information
 	collections, err := kn.db.ListCollections()
@@ -50,7 +51,13 @@ func (kn *Knowledge) Get(id string) (information.Information, error) {
 			return info, err
 		}
 		if doc == nil {
-			continue
+			doc, err = kn.db.FindFirst(query.NewQuery(coll).Where(query.Field("Hash").Eq(id)))
+			if err != nil {
+				return info, err
+			}
+			if doc == nil {
+				continue
+			}
 		}
 		err = doc.Unmarshal(&info)
 		if err != nil {
