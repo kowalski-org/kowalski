@@ -43,7 +43,11 @@ func New(args ...KnowledgeArgs) (*Knowledge, error) {
 	if err != nil {
 		return nil, err
 	}
-	faissIndex, err := faiss.NewIndexFlat(ollamaconnector.Ollamasettings.GetEmbeddingSize(), 1)
+	embeddingDim := ollamaconnector.Ollamasettings.GetEmbeddingSize()
+	if embeddingDim < 0 {
+		return nil, errors.New("invalid embedding dimension. Is ollama running?")
+	}
+	faissIndex, err := faiss.NewIndexFlat(embeddingDim, 1)
 	if err != nil {
 		return nil, err
 	}

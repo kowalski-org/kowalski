@@ -2,7 +2,6 @@ package database
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -95,13 +94,14 @@ func (kn *Knowledge) GetInfos(question string, collections []string, nrDocs int6
 
 				}
 				dbdoc, err = kn.db.FindById(collection, id[0])
-				log.Debugf("in collection %s, getting doc: %s", collection, id[0])
 				if err != nil {
 					return nil, err
 				}
 				if dbdoc == nil {
-					return nil, fmt.Errorf("couldn't find any document")
+					log.Debugf("in collection %s, doc not found: %s", collection, id[0])
+					continue
 				}
+				log.Debugf("in collection %s, doc: %s", collection, id[0])
 				if dbdoc.ObjectId() != "" {
 					found = true
 					break

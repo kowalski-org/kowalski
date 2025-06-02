@@ -186,7 +186,7 @@ func (settings *Settings) GetEmbeddingSize() int {
 	info, err := settings.GetModelInfo(settings.EmbeddingModel)
 	if err != nil {
 		log.Warnf("couldn't get embedding size: %s", err)
-		return 0
+		return -1
 	}
 	if modelArch, ok := info.ModelInfo["general.architecture"].(string); ok {
 		settings.embeddingSize = int(info.ModelInfo[modelArch+".embedding_length"].(float64))

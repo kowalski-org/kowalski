@@ -19,11 +19,11 @@ titles so that a vector db has wide range of arguments
 */
 
 type Curated struct {
-	Id           string   // Id for this currated information
-	Alternatives []string `yaml:"Alternatives,omitempty"` // alternative titles
-	Text         string   // one text field for desribing the command
-	Commands     []string `yaml:"Commands,omitempty"` // commands in the curated text
-	Files        []string `yaml:"Files,omitempty"`    // files referenced in this infor
+	Id       string   `yaml:"Id"`                 // Id for this currated information
+	Aliases  []string `yaml:"Aliases,omitempty"`  // alternative titles
+	Text     string   `yaml:"Text"`               // one text field for desribing the command
+	Commands []string `yaml:"Commands,omitempty"` // commands in the curated text
+	Files    []string `yaml:"Files,omitempty"`    // files referenced in this infor
 }
 
 func ReadCurated(fileName string) (info Information, err error) {
@@ -50,11 +50,13 @@ func ReadCurated(fileName string) (info Information, err error) {
 		Commands: curratedInfo.Commands,
 		Files:    curratedInfo.Files,
 	})
-	for _, alt := range curratedInfo.Alternatives {
+	for _, alt := range curratedInfo.Aliases {
 		info.Sections = append(info.Sections, Section{
 			Title:   alt,
 			IsAlias: true,
 		})
 	}
-	return
+	info.Commands = curratedInfo.Commands
+	info.Files = curratedInfo.Files
+	return info, err
 }
