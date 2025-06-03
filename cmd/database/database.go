@@ -78,7 +78,8 @@ to the given database and create embeddings for it.`,
 				if !info.Empty() {
 					err = db.AddInformation(args[0], info)
 					if err != nil {
-						return err
+						log.Warnf("file %s couldn't be added: %s", args[i+1], err)
+						continue
 					}
 				} else {
 					log.Warnf("file was empty: %s", args[i+1])
@@ -93,6 +94,10 @@ to the given database and create embeddings for it.`,
 					continue
 				}
 				err = db.AddInformation(args[0], info)
+				if err != nil {
+					log.Warnf("file %s couldn't be added: %s", args[i+1], err)
+					continue
+				}
 			}
 			return nil
 		default:
