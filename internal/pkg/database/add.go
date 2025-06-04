@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -18,8 +19,8 @@ import (
 
 var idLen = len(clover.NewObjectId())
 
-func (kn *Knowledge) AddFile(collection string, fileName string) (err error) {
-	info, err := docbook.ParseDocBook(fileName)
+func (kn *Knowledge) AddFile(collection string, fileName string, embeddingSize uint) (err error) {
+	info, err := docbook.ParseDocBook(fileName, embeddingSize)
 	if err != nil {
 		return
 	}
@@ -27,8 +28,14 @@ func (kn *Knowledge) AddFile(collection string, fileName string) (err error) {
 }
 
 func (kn *Knowledge) AddInformation(collection string, info information.Information) (err error) {
-	if ok, err := kn.db.HasCollection(collection); !ok {
-		err = kn.db.CreateCollection(collection)
+	collectionSplit := strings.Split(collection, "/")
+	if len(collectionSplit) != 2 {
+		return errors.New("wrong collection format must be 'name/embeddingmodell'")
+	}
+	collectionName := collectionSplit[0]
+	embeddingName := collectionSplit[1]
+	if ok, err := kn.db.HasCollection(collectionName); !ok {
+		err = kn.db.CreateCollection(collectionName)
 		if err != nil {
 			return err
 		}
@@ -36,14 +43,14 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 	// qr := kn.db.Query(collection).Where(clover.Field("Hash").Eq(info.Hash))
 	// docs, _ := qr.FindAll()
 
-	docs, _ := kn.db.FindAll(query.NewQuery(collection).Where(query.Field("Hash").Eq(info.Hash)))
+	docs, _ := kn.db.FindAll(query.NewQuery(collectionName).Where(query.Field("Hash").Eq(info.Hash)))
 	if len(docs) == 0 {
-		err = info.CreateEmbedding()
+		err = info.CreateEmbedding(embeddingName)
 		if err != nil {
 			return err
 		}
 		doc := document.NewDocumentOf(info)
-		docId, _ := kn.db.InsertOne(collection, doc)
+		docId, _ := kn.db.InsertOne(collectionName, doc)
 		/* Do not add to faiss right now, as the index isn't stored
 		err := kn.faissIndex.Add(info.EmbeddingVec)
 		if err != nil {
@@ -60,8 +67,12 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 // Get the infos out of the database for the given question. The returned documents only
 // contain this section
 func (kn *Knowledge) GetInfos(question string, collections []string, nrDocs int64) (documents []information.RetSection, err error) {
+	embedding, err := GetEmbedding((collections))
+	if err != nil {
+		return documents, err
+	}
 	kn.CreateIndex(collections)
-	emb, err := ollamaconnector.Ollamasettings.GetEmbeddings([]string{question})
+	emb, err := ollamaconnector.Ollamasettings.GetEmbeddings([]string{question}, embedding)
 	if err != nil {
 		return nil, err
 	}
@@ -135,4 +146,20 @@ func RandStringRunes(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
+}
+
+func GetEmbedding(collections []string) (embedding string, err error) {
+	for _, col := range collections {
+		collSp := strings.Split(col, "/")
+		if len(collSp) != 2 {
+			return embedding, fmt.Errorf("invalid format for collection: %s", col)
+		}
+		if embedding == "" {
+			embedding = collSp[1]
+		}
+		if collSp[1] != embedding {
+			return "", fmt.Errorf("different embeddings in collections: %s != %s", embedding, collSp[1])
+		}
+	}
+	return
 }

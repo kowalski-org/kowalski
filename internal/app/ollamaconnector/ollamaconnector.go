@@ -12,13 +12,13 @@ import (
 	"github.com/charmbracelet/log"
 )
 
+// configuration of LLM modell and connection to ollama
+// embedding is inheritly coupled the stored information
 type Settings struct {
-	LLM            string
-	EmbeddingModel string
-	OllamaURL      string
-	embeddingSize  int
-	contextSize    int
-	info           ModelInfo
+	LLM         string
+	OllamaURL   string
+	contextSize int
+	info        ModelInfo
 }
 
 var Ollamasettings Settings
@@ -147,25 +147,25 @@ func (settings Settings) SendTaskStream(msg string, resp chan *TaskResponse) (er
 	return
 }
 
-func (settings Settings) GetEmbeddings(emb []string) (*EmbeddingResponse, error) {
-	settings.PullModel(settings.EmbeddingModel)
+func (settings Settings) GetEmbeddings(emb []string, embedding string) (*EmbeddingResponse, error) {
+	settings.PullModel(embedding)
 	URL := strings.TrimSuffix(settings.OllamaURL, "/") + "/api/embed"
 	req := EmbeddingRequest{
 		Input: emb,
-		Model: settings.EmbeddingModel,
+		Model: embedding,
 	}
 	js, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", URL, settings.EmbeddingModel, err)
+		return nil, fmt.Errorf("error marshalling json in GetEmbeddings: %s", err)
 	}
 	client := http.Client{}
 	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", URL, settings.EmbeddingModel, err)
+		return nil, fmt.Errorf("request for URL: %s Error: %v", URL, err)
 	}
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", URL, settings.EmbeddingModel, err)
+		return nil, fmt.Errorf("respones URL: %s Error: %v", URL, err)
 	}
 	defer httpResp.Body.Close()
 	var ollamaResp EmbeddingResponse
@@ -177,24 +177,36 @@ func (settings Settings) GetEmbeddings(emb []string) (*EmbeddingResponse, error)
 }
 
 /*
-Get the embeddig size
+Get the embeddig dimension
 */
-func (settings *Settings) GetEmbeddingSize() int {
-	if settings.embeddingSize != 0 {
-		return settings.embeddingSize
-	}
-	info, err := settings.GetModelInfo(settings.EmbeddingModel)
+func (settings *Settings) GetEmbeddingDimension(embedding string) int {
+	info, err := settings.GetModelInfo(embedding)
 	if err != nil {
-		log.Warnf("couldn't get embedding size: %s", err)
+		log.Warnf("couldn't get embedding dimension for: %s", err)
 		return -1
 	}
 	if modelArch, ok := info.ModelInfo["general.architecture"].(string); ok {
-		settings.embeddingSize = int(info.ModelInfo[modelArch+".embedding_length"].(float64))
-		return settings.embeddingSize
+		return int(info.ModelInfo[modelArch+".embedding_length"].(float64))
 	} else {
-		log.Warnf("couldn't get embedding size for %s", modelArch)
+		log.Warnf("couldn't get embedding dimension for: %s arch: %s", embedding, modelArch)
 	}
 	return 0
+}
+
+/*
+Get the embeddig size
+*/
+func (settings *Settings) GetEmbeddingSize(embedding string) (size uint, err error) {
+	info, err := settings.GetModelInfo(embedding)
+	if err != nil {
+		log.Warnf("couldn't get embedding size: %s", err)
+		return 0, err
+	}
+	if modelArch, ok := info.ModelInfo["general.architecture"].(string); ok {
+		return uint(info.ModelInfo[modelArch+".context_length"].(float64)), nil
+	} else {
+		return 0, fmt.Errorf("couldn't get embedding size for %s", modelArch)
+	}
 }
 
 /*
@@ -236,16 +248,16 @@ func (settings Settings) GetModelInfo(name string) (*ModelInfo, error) {
 	}
 	js, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", URL, settings.EmbeddingModel, err)
+		return nil, fmt.Errorf("error marshalling json in GetEmbeddings: %s", err)
 	}
 	client := http.Client{}
 	httpReq, err := http.NewRequest(http.MethodPost, URL, bytes.NewReader(js))
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", URL, settings.EmbeddingModel, err)
+		return nil, fmt.Errorf("request for URL: %s Error: %v", URL, err)
 	}
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("URL: %s EmbeddingModel: %s Error: %v", URL, settings.EmbeddingModel, err)
+		return nil, fmt.Errorf("respones URL: %s Error: %v", URL, err)
 	}
 	defer httpResp.Body.Close()
 	err = json.NewDecoder(httpResp.Body).Decode(&settings.info)

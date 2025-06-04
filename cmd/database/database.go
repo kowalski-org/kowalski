@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/log"
 	"gopkg.in/yaml.v3"
 
+	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
 	"github.com/openSUSE/kowalski/internal/pkg/database"
 	"github.com/openSUSE/kowalski/internal/pkg/docbook"
 	"github.com/openSUSE/kowalski/internal/pkg/information"
@@ -67,10 +68,18 @@ to the given database and create embeddings for it.`,
 		if err != nil {
 			return err
 		}
+		embedding, err := database.GetEmbedding([]string{args[0]})
+		if err != nil {
+			return err
+		}
+		embeddingSize, err := ollamaconnector.Ollamasettings.GetEmbeddingSize(embedding)
+		if err != nil {
+			return err
+		}
 		switch iFormat {
 		case xmlIn:
 			for i := range args[1:] {
-				info, err := docbook.ParseDocBook(args[i+1])
+				info, err := docbook.ParseDocBook(args[i+1], embeddingSize)
 				if err != nil {
 					log.Warnf("couldn't read file: %s", err)
 					continue
