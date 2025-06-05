@@ -222,6 +222,11 @@ var databaseCheck = &cobra.Command{
 		collections := []string{}
 		if len(args) > 1 {
 			collections = args[1:]
+		} else {
+			collections, err = db.GetCollections()
+			if err != nil {
+				return err
+			}
 		}
 		nrDocs, err := cmd.Flags().GetInt64("number")
 		if err != nil {
@@ -233,7 +238,6 @@ var databaseCheck = &cobra.Command{
 		}
 		fmt.Println("Infos:")
 		for _, info := range infos {
-
 			switch oFormat {
 			case fullOut:
 				fmt.Println(info.Render())

@@ -12,12 +12,9 @@ import (
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
 	"github.com/openSUSE/kowalski/internal/pkg/docbook"
 	"github.com/openSUSE/kowalski/internal/pkg/information"
-	"github.com/ostafen/clover/v2"
 	"github.com/ostafen/clover/v2/document"
 	"github.com/ostafen/clover/v2/query"
 )
-
-var idLen = len(clover.NewObjectId())
 
 func (kn *Knowledge) AddFile(collection string, fileName string, embeddingSize uint) (err error) {
 	info, err := docbook.ParseDocBook(fileName, embeddingSize)
@@ -32,10 +29,9 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 	if len(collectionSplit) != 2 {
 		return errors.New("wrong collection format must be 'name/embeddingmodell'")
 	}
-	collectionName := collectionSplit[0]
 	embeddingName := collectionSplit[1]
-	if ok, err := kn.db.HasCollection(collectionName); !ok {
-		err = kn.db.CreateCollection(collectionName)
+	if ok, err := kn.db.HasCollection(collection); !ok {
+		err = kn.db.CreateCollection(collection)
 		if err != nil {
 			return err
 		}
@@ -43,14 +39,14 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 	// qr := kn.db.Query(collection).Where(clover.Field("Hash").Eq(info.Hash))
 	// docs, _ := qr.FindAll()
 
-	docs, _ := kn.db.FindAll(query.NewQuery(collectionName).Where(query.Field("Hash").Eq(info.Hash)))
+	docs, _ := kn.db.FindAll(query.NewQuery(collection).Where(query.Field("Hash").Eq(info.Hash)))
 	if len(docs) == 0 {
 		err = info.CreateEmbedding(embeddingName)
 		if err != nil {
 			return err
 		}
 		doc := document.NewDocumentOf(info)
-		docId, _ := kn.db.InsertOne(collectionName, doc)
+		docId, _ := kn.db.InsertOne(collection, doc)
 		/* Do not add to faiss right now, as the index isn't stored
 		err := kn.faissIndex.Add(info.EmbeddingVec)
 		if err != nil {
@@ -67,7 +63,7 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 // Get the infos out of the database for the given question. The returned documents only
 // contain this section
 func (kn *Knowledge) GetInfos(question string, collections []string, nrDocs int64) (documents []information.RetSection, err error) {
-	embedding, err := GetEmbedding((collections))
+	embedding, err := GetEmbedding(collections)
 	if err != nil {
 		return documents, err
 	}
@@ -148,6 +144,10 @@ func RandStringRunes(n int) string {
 	return string(b)
 }
 
+/*
+Get the embdding fromt the collections as their should encode the embedding. Format
+is collectionName/embeddingName
+*/
 func GetEmbedding(collections []string) (embedding string, err error) {
 	for _, col := range collections {
 		collSp := strings.Split(col, "/")
@@ -160,6 +160,9 @@ func GetEmbedding(collections []string) (embedding string, err error) {
 		if collSp[1] != embedding {
 			return "", fmt.Errorf("different embeddings in collections: %s != %s", embedding, collSp[1])
 		}
+	}
+	if embedding == "" {
+		return "", fmt.Errorf("couldn't get embedding modell from %v", collections)
 	}
 	return
 }

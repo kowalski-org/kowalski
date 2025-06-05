@@ -19,7 +19,13 @@ type PromptInfo struct {
 	Context string
 }
 
-func (kn Knowledge) GetContext(msg string, collections []string, location file.Location, maxSize int) (string, error) {
+func (kn Knowledge) GetContext(msg string, collections []string, location file.Location, maxSize int) (ret string, err error) {
+	if len(collections) == 0 {
+		collections, err = kn.GetCollections()
+		if err != nil {
+			return "", err
+		}
+	}
 	log.Debugf("creating context(%d) for '%s' in '%s'\n", maxSize, msg, collections)
 	promptInfo := GetSystemInfo()
 	promptInfo.Task = msg

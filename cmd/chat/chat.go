@@ -52,7 +52,7 @@ var reqCmd = &cobra.Command{
 		for resp := range ch {
 			respStr = append(respStr, resp.Response)
 		}
-		log.Infof("Kowalski: %s", strings.Join(respStr, ``))
+		log.Printf("Kowalski: %s", strings.Join(respStr, ``))
 		return nil
 	},
 	Args:       cobra.MinimumNArgs(1),
