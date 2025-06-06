@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"text/tabwriter"
 
 	"github.com/charmbracelet/log"
@@ -258,22 +259,60 @@ var databaseCheck = &cobra.Command{
 
 var dropDocuments = &cobra.Command{
 	Use:     "drop [DocumentId]",
-	Short:   "drop documents with given id from database",
+	Short:   "drop documents or collection with given id from database",
 	Aliases: []string{"rm", "remove", "delete", "del"},
 	Args:    cobra.MinimumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		db, err := database.New()
 		if err != nil {
 			log.Warnf("db error: %s", err)
 			return
 		}
+		collections, err := db.GetCollections()
 		for _, docId := range args {
+			if slices.Contains(collections, docId) {
+				err = db.DropCollection(docId)
+				if err != nil {
+					return err
+				}
+				continue
+			}
 			err = db.DropInformation(docId)
 			if err != nil {
-				log.Warn(err)
-				return
+				return err
 			}
 		}
+		return nil
+	},
+}
+
+var exportCollection = &cobra.Command{
+	Use:     "export COLLECTION PATH",
+	Short:   "export given collection to path",
+	Aliases: []string{"exp"},
+	Args:    cobra.MinimumNArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		db, err := database.New()
+		if err != nil {
+			log.Warnf("db error: %s", err)
+			return err
+		}
+		return db.ExportCollection(args[0], args[1])
+	},
+}
+
+var importCollection = &cobra.Command{
+	Use:     "import COLLECTION PATH",
+	Short:   "import given collection to path",
+	Aliases: []string{"imp"},
+	Args:    cobra.MinimumNArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		db, err := database.New()
+		if err != nil {
+			log.Warnf("db error: %s", err)
+			return err
+		}
+		return db.ImportCollection(args[0], args[1])
 	},
 }
 
@@ -289,6 +328,8 @@ func init() {
 	databaseCheck.Flags().Int64P("number", "n", 5, "number of documents to retreive")
 	databaseCmd.AddCommand(databaseGet)
 	databaseCmd.AddCommand(dropDocuments)
+	databaseCmd.AddCommand(exportCollection)
+	databaseCmd.AddCommand(importCollection)
 }
 func GetCommand() *cobra.Command {
 	return databaseCmd
