@@ -166,3 +166,10 @@ func GetEmbedding(collections []string) (embedding string, err error) {
 	}
 	return
 }
+
+/*
+pass DropCollection function
+*/
+func (kn *Knowledge) DropCollection(collection string) error {
+	return kn.db.DropCollection(collection)
+}

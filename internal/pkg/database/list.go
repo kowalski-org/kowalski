@@ -76,3 +76,18 @@ return a list of all colletions in the database
 func (kn *Knowledge) GetCollections() (collections []string, err error) {
 	return kn.db.ListCollections()
 }
+
+/*
+pass ExportCollection
+*/
+func (kn *Knowledge) ExportCollection(collectionName string, exportPath string) error {
+	return kn.db.ExportCollection(collectionName, exportPath)
+}
+
+/*
+pass ImportCollection
+*/
+
+func (kn *Knowledge) ImportCollection(collectionName string, importPath string) error {
+	return kn.db.ImportCollection(collectionName, importPath)
+}
