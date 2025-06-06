@@ -57,9 +57,9 @@ func (f *inputFormat) Type() string {
 
 var iFormat inputFormat
 var databaseAdd = &cobra.Command{
-	Use:        "add DATABASE FILE(s)",
-	ArgAliases: []string{"create", "ad", "new"},
-	Short:      "Add document(s) to the given database",
+	Use:     "add DATABASE FILE(s)",
+	Aliases: []string{"create", "ad", "new"},
+	Short:   "Add document(s) to the given database",
 	Long: `Add a document extracted from a file
 to the given database and create embeddings for it.`,
 	Args: cobra.MinimumNArgs(2),
@@ -118,9 +118,9 @@ to the given database and create embeddings for it.`,
 }
 
 var databaseList = &cobra.Command{
-	Use:        "list DATABASE [queries]",
-	ArgAliases: []string{"ls"},
-	Short:      "List (all) documents in the database",
+	Use:     "list DATABASE [queries]",
+	Aliases: []string{"ls"},
+	Short:   "List (all) documents in the database",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		db, err := database.New()
 		if err != nil {
@@ -180,9 +180,9 @@ func (f *outputFormat) Type() string {
 
 var oFormat outputFormat
 var databaseGet = &cobra.Command{
-	Use:        "get ID",
-	ArgAliases: []string{"show", "cat"},
-	Short:      "Get the information with ID out of database",
+	Use:     "get ID",
+	Aliases: []string{"show", "cat"},
+	Short:   "Get the information with ID out of database",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		db, err := database.New()
 		if err != nil {
@@ -210,9 +210,9 @@ var databaseGet = &cobra.Command{
 }
 
 var databaseCheck = &cobra.Command{
-	Use:        "check db for question",
-	ArgAliases: []string{"chk"},
-	Short:      "Check if database has a entry near the question",
+	Use:     "check db for question",
+	Aliases: []string{"chk"},
+	Short:   "Check if database has a entry near the question",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		db, err := database.New()
 		defer db.Close()
@@ -257,10 +257,10 @@ var databaseCheck = &cobra.Command{
 }
 
 var dropDocuments = &cobra.Command{
-	Use:        "drop [DocumentId]",
-	Short:      "drop documents with given id from database",
-	ArgAliases: []string{"rm", "remove", "delete", "del"},
-	Args:       cobra.MinimumNArgs(1),
+	Use:     "drop [DocumentId]",
+	Short:   "drop documents with given id from database",
+	Aliases: []string{"rm", "remove", "delete", "del"},
+	Args:    cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		db, err := database.New()
 		if err != nil {
