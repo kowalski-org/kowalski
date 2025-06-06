@@ -52,12 +52,12 @@ var reqCmd = &cobra.Command{
 		for resp := range ch {
 			respStr = append(respStr, resp.Response)
 		}
-		log.Infof("Kowalski: %s", strings.Join(respStr, ``))
+		log.Printf("Kowalski: %s", strings.Join(respStr, ``))
 		return nil
 	},
-	Args:       cobra.MinimumNArgs(1),
-	ArgAliases: []string{"query", "ask", "q", "req", "r"},
-	Hidden:     true,
+	Args:    cobra.MinimumNArgs(1),
+	Aliases: []string{"query", "ask", "q", "req", "r"},
+	Hidden:  true,
 }
 
 func init() {

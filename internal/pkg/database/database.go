@@ -43,15 +43,7 @@ func New(args ...KnowledgeArgs) (*Knowledge, error) {
 	if err != nil {
 		return nil, err
 	}
-	embeddingDim := ollamaconnector.Ollamasettings.GetEmbeddingSize()
-	if embeddingDim < 0 {
-		return nil, errors.New("invalid embedding dimension. Is ollama running?")
-	}
-	faissIndex, err := faiss.NewIndexFlat(embeddingDim, 1)
-	if err != nil {
-		return nil, err
-	}
-	return &Knowledge{db: db, faissIndex: faissIndex}, nil
+	return &Knowledge{db: db}, nil
 }
 
 func (kn *Knowledge) Close() {
@@ -68,6 +60,25 @@ func OptionWithFile(filename string) KnowledgeArgs {
 }
 
 func (kn *Knowledge) CreateIndex(collections []string) (err error) {
+	if kn.faissIndex == nil {
+		collections, err := kn.db.ListCollections()
+		if err != nil {
+			return err
+		}
+		embedding, err := GetEmbedding(collections)
+		if err != nil {
+			return err
+		}
+		embeddingDim := ollamaconnector.Ollamasettings.GetEmbeddingDimension(embedding)
+		if embeddingDim < 0 {
+			return errors.New("invalid embedding dimension. Is ollama running?")
+		}
+		kn.faissIndex, err = faiss.NewIndexFlat(embeddingDim, 1)
+		if err != nil {
+			return err
+		}
+
+	}
 	if len(collections) == 0 {
 		collections, err = kn.db.ListCollections()
 	}

@@ -25,12 +25,24 @@ So the input file foo.yaml will create an output like foo.yaml.abcd1234.`,
 		if err != nil {
 			return err
 		}
+		db, err := database.New()
+		if err != nil {
+			return err
+		}
+		cols, err := db.ListCollections()
+		if err != nil {
+			return err
+		}
+		embedding, err := database.GetEmbedding(cols)
+		if err != nil {
+			return err
+		}
 		id := uuid.New()
 		evaluationList := evaluate.EvalutaionList{
 			Id:        id.String(),
 			Version:   version.Version,
 			LLM:       ollamaconnector.Ollamasettings.LLM,
-			Embedding: ollamaconnector.Ollamasettings.EmbeddingModel,
+			Embedding: embedding,
 		}
 		log.Infof("starting evaluation with id: %s", id.String())
 		log.Infof("LLM: %s embedding: %s", evaluationList.LLM, evaluationList.Embedding)
@@ -55,10 +67,6 @@ So the input file foo.yaml will create an output like foo.yaml.abcd1234.`,
 			} else {
 				evaluationList.Evaluations = append(evaluationList.Evaluations, fList.Evaluations...)
 			}
-		}
-		db, err := database.New()
-		if err != nil {
-			return err
 		}
 		resultList := []evaluate.EvlatuationResult{}
 		for _, eval := range evaluationList.Evaluations {

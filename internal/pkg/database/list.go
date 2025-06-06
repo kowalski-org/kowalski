@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 
+	"github.com/charmbracelet/log"
 	"github.com/openSUSE/kowalski/internal/pkg/information"
 	"github.com/ostafen/clover/v2/query"
 )
@@ -17,6 +18,7 @@ type DocumentInfo struct {
 
 func (kn *Knowledge) List(collection string) (docLst []DocumentInfo, err error) {
 	docs, err := kn.db.FindAll(query.NewQuery(collection))
+	log.Debugf("docs(%s): %v", collection, docs)
 	if err != nil {
 		return nil, err
 	}
@@ -66,4 +68,11 @@ func (kn *Knowledge) Get(id string) (information.Information, error) {
 		return info, nil
 	}
 	return info, fmt.Errorf("couldn't find document with id: %s", id)
+}
+
+/*
+return a list of all colletions in the database
+*/
+func (kn *Knowledge) GetCollections() (collections []string, err error) {
+	return kn.db.ListCollections()
 }

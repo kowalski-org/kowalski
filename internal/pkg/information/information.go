@@ -110,20 +110,32 @@ func (info *Information) Empty() bool {
 	return len(info.Sections) == 0
 }
 
-func (info *Information) CreateEmbedding() (err error) {
+func (info *Information) CreateEmbedding(embedding string) (err error) {
+	embeddingSize, err := ollamaconnector.Ollamasettings.GetEmbeddingSize(embedding)
+	if err != nil {
+		return err
+	}
 	for i, sec := range info.Sections {
 		str, err := sec.Render()
 		if err != nil {
 			return err
 		}
-		embResp, err := ollamaconnector.Ollamasettings.GetEmbeddings([]string{str})
+		// unfortunately ollama does give the maximal embeddings in tokens
+		// and not in chars, so we use just a crude factor between them
+		char2TokenMult := uint(3)
+		if uint(len(str)) > char2TokenMult*uint(embeddingSize) {
+			str = str[:char2TokenMult*embeddingSize]
+			log.Warnf("truncated info: %s", sec.Title)
+		}
+		embResp, err := ollamaconnector.Ollamasettings.GetEmbeddings([]string{str}, embedding)
 		if err != nil {
 			return err
 		}
 		if len(embResp.Embeddings) == 0 {
 			log.Debugf("embedding text: %s", []string{str})
-			return fmt.Errorf("couldn't calculate embedding")
+			return fmt.Errorf("couldn't calculate embedding, size: %d", len(str))
 		}
+		log.Debugf("embedding size for %s: %d", sec.Title, len(str))
 		info.Sections[i].EmbeddingVec = embResp.Embeddings[0]
 	}
 	return nil

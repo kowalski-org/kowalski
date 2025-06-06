@@ -20,7 +20,7 @@ var entities = map[string]string{
 	"prompt.user": "",
 }
 
-func ParseDocBook(filename string) (info information.Information, err error) {
+func ParseDocBook(filename string, shardSize uint) (info information.Information, err error) {
 	doc := etree.NewDocument()
 	doc.ReadSettings = etree.ReadSettings{
 		Entity: entities,
@@ -67,11 +67,21 @@ func ParseDocBook(filename string) (info information.Information, err error) {
 	info.Sections = append(info.Sections, information.Section{
 		Title: filename,
 	})
+	size := uint(0)
 	for _, line := range lines {
+		// we need to split up texts so that we do not overflow embedding caculation
 		switch line.Type {
 		default:
-			info.Sections[len(info.Sections)-1].Lines =
-				append(info.Sections[len(info.Sections)-1].Lines, line)
+			if uint(len(line.Text))+size < 2*shardSize {
+				info.Sections[len(info.Sections)-1].Lines =
+					append(info.Sections[len(info.Sections)-1].Lines, line)
+				size += uint(len(line.Text))
+			} else {
+				info.Sections = append(info.Sections, information.Section{
+					Title: info.Sections[len(info.Sections)-1].Title,
+				})
+				size = 0
+			}
 		case information.File:
 			// add to explicit file slice, to the lines and slice of info
 			info.Sections[len(info.Sections)-1].Lines =
@@ -90,6 +100,7 @@ func ParseDocBook(filename string) (info information.Information, err error) {
 			info.Sections = append(info.Sections, information.Section{
 				Title: line.Text,
 			})
+			size = 0
 		}
 	}
 	return
