@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/DataIntelligenceCrew/go-faiss"
 	"github.com/charmbracelet/log"
@@ -13,6 +14,8 @@ import (
 	"github.com/openSUSE/kowalski/internal/pkg/information"
 	"github.com/timshannon/bolthold"
 )
+
+const dbSuffix = ".md"
 
 type Knowledge struct {
 	db         map[string]*bolthold.Store
@@ -45,7 +48,7 @@ func New(args ...KnowledgeArgs) (*Knowledge, error) {
 		arg(&dbopts)
 	}
 
-	dbBackends, err := fs.Glob(os.DirFS(dbopts.dbPath), "*.md")
+	dbBackends, err := fs.Glob(os.DirFS(dbopts.dbPath), "*"+dbSuffix)
 	if err != nil {
 		return nil, err
 	}
@@ -54,12 +57,14 @@ func New(args ...KnowledgeArgs) (*Knowledge, error) {
 		dbPath:   dbopts.dbPath,
 		boldOpts: dbopts.BoltOptions,
 	}
-	for _, dbname := range dbBackends {
-		store, err := bolthold.Open(path.Join(dbopts.dbPath, dbname), 0644, dbopts.BoltOptions)
+	for _, dbFilename := range dbBackends {
+		store, err := bolthold.Open(path.Join(dbopts.dbPath, dbFilename), 0644, dbopts.BoltOptions)
 		if err != nil {
 			return nil, err
 		}
-		kn.db[dbname] = store
+		dbName := strings.TrimSuffix(dbFilename, dbSuffix)
+		log.Debugf("opened db: %s file: %s", dbName, dbFilename)
+		kn.db[dbName] = store
 	}
 	return &kn, nil
 }
@@ -87,8 +92,8 @@ func (kn *Knowledge) CreateIndex() (err error) {
 		}
 
 	}
-	for collectionKey := range kn.db {
-		kn.db[collectionKey].ForEach(&bolthold.Query{}, func(info *information.Information) bool {
+	for collectionKey, collection := range kn.db {
+		collection.ForEach(&bolthold.Query{}, func(info *information.Information) error {
 			for i, sec := range info.Sections {
 				// will have to convert from float64 to float32
 				/*
@@ -114,11 +119,13 @@ func (kn *Knowledge) CreateIndex() (err error) {
 				}
 				kn.faissId = append(kn.faissId, info.Hash+fmt.Sprintf(":%d", index))
 			}
-			return true
+			return nil
 		})
+		log.Debugf("indexed: %s", collectionKey)
 	}
 	// \TODO close db
 	// kn.db.Close()
+
 	return
 }
 
@@ -126,14 +133,15 @@ func (kn *Knowledge) CreateIndex() (err error) {
 // as the hash of the file which was used to add the documentation
 func (kn *Knowledge) DropInformation(docId string) (err error) {
 	for _, coll := range kn.db {
-		doc := coll.Find(information.Information{}, bolthold.Where("Hash").Eq(docId))
-		if doc == nil {
+		count, err := coll.Count(&information.Information{}, bolthold.Where("Hash").Eq(docId))
+		if err != nil {
+			return err
+		}
+		if count == 0 {
 			continue
 		}
-		if doc != nil {
-			log.Infof("deleted document: %s", docId)
-			return coll.DeleteMatching(information.Information{}, bolthold.Where("Hash").Eq(docId))
-		}
+		log.Infof("deleted document: %s", docId)
+		return coll.DeleteMatching(information.Information{}, bolthold.Where("Hash").Eq(docId))
 	}
 	return fmt.Errorf("document wasn't found in db: %s", docId)
 }

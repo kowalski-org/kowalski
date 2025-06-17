@@ -31,15 +31,19 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 	}
 	embeddingName := collectionSplit[1]
 	if _, ok := kn.db[collection]; !ok {
-		newStore, err := bolthold.Open(path.Join(kn.dbPath, collection+".md"), 0644, kn.boldOpts)
+		log.Debugf("creating new db for collection: %s", collection)
+		newStore, err := bolthold.Open(path.Join(kn.dbPath, collection+dbSuffix), 0644, kn.boldOpts)
 		if err != nil {
 			return err
 		}
 		kn.db[collection] = newStore
 	}
-
-	docs := kn.db[collection].Find(information.Information{}, bolthold.Where("Hash").Eq(info.Hash))
-	if docs == nil {
+	log.Debugf("counting in collection: %s", collection)
+	count, err := kn.db[collection].Count(&info, bolthold.Where("Hash").Eq(info.Hash))
+	if err != nil {
+		return err
+	}
+	if count == 0 {
 		err = info.CreateEmbedding(embeddingName)
 		if err != nil {
 			return err
@@ -95,12 +99,15 @@ func (kn *Knowledge) GetInfos(question string, collections []string, nrDocs int6
 					return nil, errors.New("couldn't get index of section")
 
 				}
-				err = kn.db[collection].FindOne(&info, bolthold.Where("Hash").Eq(id[0]))
+				count, err := kn.db[collection].Count(&info, bolthold.Where("Hash").Eq(id[0]))
 				if err != nil {
 					return nil, err
 				}
-				log.Debugf("in collection %s, doc: %s", collection, id[0])
-				if info.Hash == id[0] {
+				if count != 0 {
+					err = kn.db[collection].FindOne(&info, bolthold.Where("Hash").Eq(id[0]))
+					if err != nil {
+						return nil, err
+					}
 					found = true
 					break
 				}
@@ -136,7 +143,7 @@ is collectionName/embeddingName
 */
 func GetEmbedding(collections []string) (embedding string, err error) {
 	for _, col := range collections {
-		collSp := strings.Split(col, "/")
+		collSp := strings.Split(col, "@")
 		if len(collSp) != 2 {
 			return embedding, fmt.Errorf("invalid format for collection: %s", col)
 		}

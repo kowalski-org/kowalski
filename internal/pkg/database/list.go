@@ -10,19 +10,26 @@ import (
 
 type DocumentInfo struct {
 	Id         string
-	Title      string
 	Source     string
 	NrFiles    int
 	NrCommands int
 }
 
+// return all documents of given collection
 func (kn *Knowledge) List(collection string) (docLst []DocumentInfo, err error) {
 	if collStor, ok := kn.db[collection]; ok {
-		docs := collStor.Find(docLst, &bolthold.Query{})
-		log.Debugf("docs(%s): %v", collection, docs)
+		collStor.ForEach(&bolthold.Query{}, func(info *information.Information) error {
+			docLst = append(docLst, DocumentInfo{
+				Id:         info.Hash,
+				Source:     info.Source,
+				NrFiles:    len(info.Files),
+				NrCommands: len(info.Commands),
+			})
+			return nil
+		})
 		return
 	}
-	return
+	return docLst, fmt.Errorf("collection %s not found", collection)
 }
 
 // return the whole informaton assosciated with document, either by the file hash
