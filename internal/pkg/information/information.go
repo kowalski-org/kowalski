@@ -57,7 +57,7 @@ func GetType(str string) LineType {
 
 type Information struct {
 	OS       []string
-	Hash     string
+	Hash     string `boltholdKey:"ID"`
 	Source   string
 	Sections []Section
 	// mentioned files info

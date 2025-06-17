@@ -29,10 +29,7 @@ So the input file foo.yaml will create an output like foo.yaml.abcd1234.`,
 		if err != nil {
 			return err
 		}
-		cols, err := db.ListCollections()
-		if err != nil {
-			return err
-		}
+		cols := db.ListCollections()
 		embedding, err := database.GetEmbedding(cols)
 		if err != nil {
 			return err

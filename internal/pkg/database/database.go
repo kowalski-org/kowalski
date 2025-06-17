@@ -5,72 +5,85 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
+	"strings"
 
 	"github.com/DataIntelligenceCrew/go-faiss"
 	"github.com/charmbracelet/log"
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
 	"github.com/openSUSE/kowalski/internal/pkg/information"
-	"github.com/ostafen/clover/v2"
-	"github.com/ostafen/clover/v2/document"
-	"github.com/ostafen/clover/v2/query"
+	"github.com/timshannon/bolthold"
 )
 
+const dbSuffix = ".md"
+
 type Knowledge struct {
-	db         *clover.DB
+	db         map[string]*bolthold.Store
 	faissIndex *faiss.IndexFlat
 	faissId    []string
+	dbPath     string
+	boldOpts   *bolthold.Options
 }
 
 type KnowledgeOpts struct {
-	filename string
-}
-
-var DBLocation string = "cloverDB"
-
-func New(args ...KnowledgeArgs) (*Knowledge, error) {
-	opts := KnowledgeOpts{
-		filename: DBLocation,
-	}
-	for _, arg := range args {
-		arg(&opts)
-	}
-	_, err := os.Stat(opts.filename)
-	if errors.Is(err, fs.ErrNotExist) {
-		os.MkdirAll(opts.filename, 0755)
-	}
-	log.Debugf("opening database: %s", opts.filename)
-	db, err := clover.Open(opts.filename)
-	if err != nil {
-		return nil, err
-	}
-	return &Knowledge{db: db}, nil
-}
-
-func (kn *Knowledge) Close() {
-	kn.db.Close()
+	dbPath      string
+	BoltOptions *bolthold.Options
 }
 
 type KnowledgeArgs func(*KnowledgeOpts)
 
 func OptionWithFile(filename string) KnowledgeArgs {
 	return func(kn *KnowledgeOpts) {
-		kn.filename = filename
+		kn.dbPath = filename
 	}
-
 }
 
-func (kn *Knowledge) CreateIndex(collections []string) (err error) {
-	if kn.faissIndex == nil {
-		collections, err := kn.db.ListCollections()
+var DBLocation string
+
+func New(args ...KnowledgeArgs) (*Knowledge, error) {
+	dbopts := KnowledgeOpts{
+		dbPath: DBLocation,
+	}
+	for _, arg := range args {
+		arg(&dbopts)
+	}
+
+	dbBackends, err := fs.Glob(os.DirFS(dbopts.dbPath), "*"+dbSuffix)
+	if err != nil {
+		return nil, err
+	}
+	kn := Knowledge{
+		db:       make(map[string]*bolthold.Store),
+		dbPath:   dbopts.dbPath,
+		boldOpts: dbopts.BoltOptions,
+	}
+	for _, dbFilename := range dbBackends {
+		store, err := bolthold.Open(path.Join(dbopts.dbPath, dbFilename), 0644, dbopts.BoltOptions)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		dbName := strings.TrimSuffix(dbFilename, dbSuffix)
+		log.Debugf("opened db: %s file: %s", dbName, dbFilename)
+		kn.db[dbName] = store
+	}
+	return &kn, nil
+}
+
+func (kn *Knowledge) Close() {
+	for _, dbName := range kn.db {
+		dbName.Close()
+	}
+}
+
+func (kn *Knowledge) CreateIndex() (err error) {
+	if kn.faissIndex == nil {
+		collections := kn.ListCollections()
 		embedding, err := GetEmbedding(collections)
 		if err != nil {
 			return err
 		}
 		embeddingDim := ollamaconnector.Ollamasettings.GetEmbeddingDimension(embedding)
-		if embeddingDim < 0 {
+		if embeddingDim <= 0 {
 			return errors.New("invalid embedding dimension. Is ollama running?")
 		}
 		kn.faissIndex, err = faiss.NewIndexFlat(embeddingDim, 1)
@@ -79,19 +92,8 @@ func (kn *Knowledge) CreateIndex(collections []string) (err error) {
 		}
 
 	}
-	if len(collections) == 0 {
-		collections, err = kn.db.ListCollections()
-	}
-	if err != nil {
-		return err
-	}
-	for _, collection := range collections {
-		kn.db.ForEach(query.NewQuery(collection), func(doc *document.Document) bool {
-			var info information.Information
-			err := doc.Unmarshal(&info)
-			if err != nil {
-				return false
-			}
+	for collectionKey, collection := range kn.db {
+		collection.ForEach(&bolthold.Query{}, func(info *information.Information) error {
 			for i, sec := range info.Sections {
 				// will have to convert from float64 to float32
 				/*
@@ -115,48 +117,31 @@ func (kn *Knowledge) CreateIndex(collections []string) (err error) {
 				if sec.IsAlias {
 					index = 0
 				}
-				kn.faissId = append(kn.faissId, doc.ObjectId()+fmt.Sprintf(":%d", index))
+				kn.faissId = append(kn.faissId, info.Hash+fmt.Sprintf(":%d", index))
 			}
-			return true
+			return nil
 		})
+		log.Debugf("indexed: %s", collectionKey)
 	}
 	// \TODO close db
 	// kn.db.Close()
+
 	return
 }
 
 // drop the information from the database. As well the clover document id is matched
 // as the hash of the file which was used to add the documentation
-func (kn *Knowledge) DropInformation(docId string) error {
-	collections, err := kn.db.ListCollections()
-	if err != nil {
-		return err
-	}
-	for _, coll := range collections {
-		doc, err := kn.db.FindById(coll, docId)
+func (kn *Knowledge) DropInformation(docId string) (err error) {
+	for _, coll := range kn.db {
+		count, err := coll.Count(&information.Information{}, bolthold.Where("Hash").Eq(docId))
 		if err != nil {
 			return err
 		}
-		if doc != nil {
-			err = kn.db.DeleteById(coll, docId)
-			log.Infof("deleted collection/document: %s/%s", coll, docId)
-			return err
+		if count == 0 {
+			continue
 		}
-
-		doc, err = kn.db.FindFirst(query.NewQuery(coll).Where(query.Field("Hash").Eq(docId)))
-		if err != nil {
-			return err
-		}
-		if doc != nil {
-			log.Debugf("found document with hash: %s: %s -> %s", coll, docId, doc.ObjectId())
-			err = kn.db.DeleteById(coll, doc.ObjectId())
-			if err != nil {
-				return err
-			}
-			log.Infof("deleted document: %s", docId)
-			return nil
-
-		}
+		log.Infof("deleted document: %s", docId)
+		return coll.DeleteMatching(information.Information{}, bolthold.Where("Hash").Eq(docId))
 	}
 	return fmt.Errorf("document wasn't found in db: %s", docId)
 }

@@ -128,13 +128,10 @@ var databaseList = &cobra.Command{
 			return err
 		}
 		if len(args) == 0 {
-			if colls, err := db.ListCollections(); err != nil {
-				return err
-			} else {
-				fmt.Println("Collections:")
-				for _, col := range colls {
-					fmt.Printf("%s\n", col)
-				}
+			colls := db.ListCollections()
+			fmt.Println("Collections:")
+			for _, col := range colls {
+				fmt.Printf("%s\n", col)
 			}
 		} else {
 			if docs, err := db.List(args[0]); err != nil {
@@ -224,10 +221,7 @@ var databaseCheck = &cobra.Command{
 		if len(args) > 1 {
 			collections = args[1:]
 		} else {
-			collections, err = db.GetCollections()
-			if err != nil {
-				return err
-			}
+			collections = db.ListCollections()
 		}
 		nrDocs, err := cmd.Flags().GetInt64("number")
 		if err != nil {
@@ -268,7 +262,7 @@ var dropDocuments = &cobra.Command{
 			log.Warnf("db error: %s", err)
 			return
 		}
-		collections, err := db.GetCollections()
+		collections := db.ListCollections()
 		for _, docId := range args {
 			if slices.Contains(collections, docId) {
 				err = db.DropCollection(docId)
@@ -286,36 +280,37 @@ var dropDocuments = &cobra.Command{
 	},
 }
 
-var exportCollection = &cobra.Command{
-	Use:     "export COLLECTION PATH",
-	Short:   "export given collection to path",
-	Aliases: []string{"exp"},
-	Args:    cobra.MinimumNArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		db, err := database.New()
-		if err != nil {
-			log.Warnf("db error: %s", err)
-			return err
-		}
-		return db.ExportCollection(args[0], args[1])
-	},
-}
+/*
+	var exportCollection = &cobra.Command{
+		Use:     "export COLLECTION PATH",
+		Short:   "export given collection to path",
+		Aliases: []string{"exp"},
+		Args:    cobra.MinimumNArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			db, err := database.New()
+			if err != nil {
+				log.Warnf("db error: %s", err)
+				return err
+			}
+			return db.ExportCollection(args[0], args[1])
+		},
+	}
 
-var importCollection = &cobra.Command{
-	Use:     "import COLLECTION PATH",
-	Short:   "import given collection to path",
-	Aliases: []string{"imp"},
-	Args:    cobra.MinimumNArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		db, err := database.New()
-		if err != nil {
-			log.Warnf("db error: %s", err)
-			return err
-		}
-		return db.ImportCollection(args[0], args[1])
-	},
-}
-
+	var importCollection = &cobra.Command{
+		Use:     "import COLLECTION PATH",
+		Short:   "import given collection to path",
+		Aliases: []string{"imp"},
+		Args:    cobra.MinimumNArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			db, err := database.New()
+			if err != nil {
+				log.Warnf("db error: %s", err)
+				return err
+			}
+			return db.ImportCollection(args[0], args[1])
+		},
+	}
+*/
 func init() {
 	databaseGet.Flags().Var(&oFormat, "format", "format of the dump {full,title,json,yaml}")
 	databaseCheck.Flags().Var(&oFormat, "format", "format of the dump {full,title,json,yaml}")
@@ -328,8 +323,8 @@ func init() {
 	databaseCheck.Flags().Int64P("number", "n", 5, "number of documents to retreive")
 	databaseCmd.AddCommand(databaseGet)
 	databaseCmd.AddCommand(dropDocuments)
-	databaseCmd.AddCommand(exportCollection)
-	databaseCmd.AddCommand(importCollection)
+	// databaseCmd.AddCommand(exportCollection)
+	// databaseCmd.AddCommand(importCollection)
 }
 func GetCommand() *cobra.Command {
 	return databaseCmd
