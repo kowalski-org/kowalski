@@ -140,7 +140,7 @@ var databaseList = &cobra.Command{
 				w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 				fmt.Fprintln(w, "Id\tSource\tFiles\tCommands")
 				for _, doc := range docs {
-					fmt.Fprintf(w, "%s %s %d %d\n", doc.Id, doc.Source, doc.NrFiles, doc.NrCommands)
+					fmt.Fprintf(w, "%s\t%s\t%d\t%d\n", doc.Id, doc.Source, doc.NrFiles, doc.NrCommands)
 				}
 				w.Flush()
 			}

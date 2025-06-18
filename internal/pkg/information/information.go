@@ -72,7 +72,7 @@ type Section struct {
 	Lines        []Line    `yaml:"Lines,omitempty"`
 	Files        []string  `yaml:"Files,omitempty"`
 	Commands     []string  `yaml:"Commands,omitempty"`
-	IsAlias      bool      `yaml:"IsAlias,comitempty"` // Title is an alias to first section
+	IsAlias      bool      `yaml:"IsAlias,omitempty"` // Title is an alias to first section
 }
 
 // data returned from db for the LLM modell

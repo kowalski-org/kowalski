@@ -124,6 +124,17 @@ func parse(elem *etree.Element) (lines []information.Line) {
 			cmdLine.Text = strings.Join(buf, " ")
 			lines = append(lines, cmdLine)
 			lines = appendText(lines, e.Tail(), "text")
+		case "filename":
+			fileLine := information.Line{
+				Type: information.File,
+			}
+			buf := []string{cleanStr(e.Text())}
+			for _, subCmd := range parse(e) {
+				buf = append(buf, subCmd.Text)
+			}
+			fileLine.Text = strings.Join(buf, " ")
+			lines = append(lines, fileLine)
+			lines = appendText(lines, e.Tail(), "text")
 		case "title":
 			titleLine := information.Line{
 				Type: information.Title,
