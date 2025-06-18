@@ -82,7 +82,7 @@ func initialModel(llm *ollamaconnector.Settings, location file.Location) uimodel
 	uid, _ := user.Current()
 	db, err := database.New()
 	if err != nil {
-		log.Warnf("Couldn't create database: %s", err)
+		log.Warnf("couldn't access database: %s", err)
 	}
 
 	return uimodel{
@@ -107,9 +107,6 @@ func (m *uimodel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		tiCmd tea.Cmd
 		vpCmd tea.Cmd
 	)
-
-	m.textarea, tiCmd = m.textarea.Update(msg)
-	m.viewport, vpCmd = m.viewport.Update(msg)
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -142,12 +139,16 @@ func (m *uimodel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.answer += string(msg)
 		m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(
 			strings.Join(append(m.inputs, m.answer), "\n")))
+		m.viewport.GotoBottom()
 
 	// We handle errors just like any other message
 	case errMsg:
 		m.err = msg
 		return m, nil
 	}
+
+	m.textarea, tiCmd = m.textarea.Update(msg)
+	m.viewport, vpCmd = m.viewport.Update(msg)
 
 	return m, tea.Batch(tiCmd, vpCmd)
 }

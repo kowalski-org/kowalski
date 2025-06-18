@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -32,6 +33,10 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 	embeddingName := collectionSplit[1]
 	if _, ok := kn.db[collection]; !ok {
 		log.Debugf("creating new db for collection: %s", collection)
+		err = os.MkdirAll(kn.dbPath, 0755)
+		if err != nil {
+			return err
+		}
 		newStore, err := bolthold.Open(path.Join(kn.dbPath, collection+dbSuffix), 0644, kn.boldOpts)
 		if err != nil {
 			return err
