@@ -5,6 +5,9 @@ on:
   release:
     types: [published]
 
+env:
+  EMBEDDING: bge-m3:567m
+
 jobs:
   build-and-push-binary:
     runs-on: ubuntu-latest
@@ -83,10 +86,28 @@ jobs:
             --name ollama --network ollama-net \
             -p 11434:11434 \
             ollama/ollama:latest
-      - name: Clone external repo
+      - name: Install ollama on machine
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+      - name: Pull modell
+        run: |
+          ollama pull $EMBEDDING
+      - name: Create embedding of crafted inputs
+        run: |
+          docker run \
+            --name kowalski-container \
+            --network ollama-net \
+            -v /tmp/suseDocRepo:/tmp/suseDocRepo \
+            -v /tmp/suseDoc:/suseDoc \
+            -e KW_URL=http://ollama:11434/ \
+            --link ollama:ollama \
+            ghcr.io/${{ github.repository_owner }}/kowalski-binary:latest \
+            --format yaml \
+            database add kowalski@${EMBEDDING} input_tests/zypper.yaml
+      - name: Clone external SUSE docs repo
         run:  |
           git clone --depth 1 https://github.com/SUSE/doc-sle /tmp/suseDocRepo
-      - name: Run kowalski-binary container
+      - name: Create embeddings of SUSE docs
         run: |
           find /tmp/suseDocRepo -type f -name "*.xml" | xargs \
           docker run \
@@ -97,10 +118,11 @@ jobs:
             -e KW_URL=http://ollama:11434/ \
             --link ollama:ollama \
             ghcr.io/${{ github.repository_owner }}/kowalski-binary:latest \
-            database add suseDoc
+            --format xml \
+            database add suseDoc@${EMBEDDING}
       - name: Create archive of /suseDoc
         run: |
-         tar -C /tmp -czvf /tmp/suseDoc.tar.gz suseDoc
+         tar -C /tmp -czvf /tmp/suseDoc-${EMBEDDING}.tar.gz suseDoc
       - name: Upload /suseDoc as asset
         uses: xresloader/upload-to-github-release@v1
         env:
