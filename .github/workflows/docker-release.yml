@@ -95,6 +95,7 @@ jobs:
       - name: Create embedding of crafted inputs
         run: |
           docker run \
+            --rm \
             --name kowalski-container \
             --network ollama-net \
             -v /tmp/suseDocRepo:/tmp/suseDocRepo \
@@ -111,6 +112,7 @@ jobs:
         run: |
           find /tmp/suseDocRepo -type f -name "*.xml" | xargs \
           docker run \
+            --rm \
             --name kowalski-container \
             --network ollama-net \
             -v /tmp/suseDocRepo:/tmp/suseDocRepo \
