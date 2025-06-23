@@ -6,7 +6,7 @@ on:
     types: [published]
 
 env:
-  EMBEDDING: bge-m3:567m
+  EMBEDDING: snowflake-arctic-embed2:568m
 
 jobs:
   build-and-push-binary:
@@ -98,6 +98,7 @@ jobs:
             --rm \
             --name kowalski-container \
             --network ollama-net \
+            -v /tmp/suseDocRepo:/tmp/suseDocRepo \
             -v /tmp/suseDoc:/suseDoc \
             -e KW_URL=http://ollama:11434/ \
             --link ollama:ollama \
