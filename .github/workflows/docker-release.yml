@@ -98,7 +98,6 @@ jobs:
             --rm \
             --name kowalski-container \
             --network ollama-net \
-            -v /tmp/suseDocRepo:/tmp/suseDocRepo \
             -v /tmp/suseDoc:/suseDoc \
             -e KW_URL=http://ollama:11434/ \
             --link ollama:ollama \
