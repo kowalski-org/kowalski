@@ -37,7 +37,7 @@ func (kn *Knowledge) AddInformation(collection string, info information.Informat
 		if err != nil {
 			return err
 		}
-		newStore, err := bolthold.Open(path.Join(kn.dbPath, collection+dbSuffix), 0644, kn.boldOpts)
+		newStore, err := bolthold.Open(path.Join(kn.dbPath, collection+dbSuffix), 0644, kn.boltOpts)
 		if err != nil {
 			return err
 		}
