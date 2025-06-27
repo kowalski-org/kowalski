@@ -87,6 +87,16 @@ func (kn *Knowledge) Close() {
 	}
 }
 
+// check if db is read only
+func (kn *Knowledge) IsReadOnly() bool {
+	return kn.boltOpts.ReadOnly
+}
+
+// get the db path
+func (kn *Knowledge) Path() string {
+	return kn.dbPath
+}
+
 func (kn *Knowledge) CreateIndex() (err error) {
 	if kn.faissIndex == nil {
 		collections := kn.ListCollections()
