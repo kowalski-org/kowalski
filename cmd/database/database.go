@@ -69,6 +69,9 @@ to the given database and create embeddings for it.`,
 		if err != nil {
 			return err
 		}
+		if db.IsReadOnly() {
+			return fmt.Errorf("database or path is read only, path: %s", db.Path())
+		}
 		embedding, err := database.GetEmbedding([]string{args[0]})
 		if err != nil {
 			return err
@@ -261,6 +264,9 @@ var dropDocuments = &cobra.Command{
 		if err != nil {
 			log.Warnf("db error: %s", err)
 			return
+		}
+		if db.IsReadOnly() {
+			return fmt.Errorf("database or path is read only, path: %s", db.Path())
 		}
 		collections := db.ListCollections()
 		for _, docId := range args {

@@ -13,6 +13,7 @@ import (
 	"github.com/openSUSE/kowalski/internal/app/ollamaconnector"
 	"github.com/openSUSE/kowalski/internal/pkg/information"
 	"github.com/timshannon/bolthold"
+	"go.etcd.io/bbolt"
 )
 
 const dbSuffix = ".md"
@@ -22,12 +23,11 @@ type Knowledge struct {
 	faissIndex *faiss.IndexFlat
 	faissId    []string
 	dbPath     string
-	boldOpts   *bolthold.Options
+	boltOpts   *bolthold.Options
 }
 
 type KnowledgeOpts struct {
-	dbPath      string
-	BoltOptions *bolthold.Options
+	dbPath string
 }
 
 type KnowledgeArgs func(*KnowledgeOpts)
@@ -44,6 +44,7 @@ func New(args ...KnowledgeArgs) (*Knowledge, error) {
 	dbopts := KnowledgeOpts{
 		dbPath: DBLocation,
 	}
+
 	for _, arg := range args {
 		arg(&dbopts)
 	}
@@ -53,17 +54,28 @@ func New(args ...KnowledgeArgs) (*Knowledge, error) {
 		return nil, err
 	}
 	kn := Knowledge{
-		db:       make(map[string]*bolthold.Store),
-		dbPath:   dbopts.dbPath,
-		boldOpts: dbopts.BoltOptions,
+		db:     make(map[string]*bolthold.Store),
+		dbPath: dbopts.dbPath,
 	}
+	// dbopts.BoltOptions = new(bolthold.Options)
+	// dbopts.BoltOptions.ReadOnly = true
+	kn.boltOpts = new(bolthold.Options)
+	kn.boltOpts.Options = new(bbolt.Options)
 	for _, dbFilename := range dbBackends {
-		store, err := bolthold.Open(path.Join(dbopts.dbPath, dbFilename), 0644, dbopts.BoltOptions)
+		// try to openDB in writeable mode, if it fails open read-only
+		fileTest, err := os.OpenFile(dbFilename, os.O_WRONLY, 0666)
+		if err != nil {
+			if os.IsPermission(err) {
+				kn.boltOpts.ReadOnly = true
+			}
+		}
+		fileTest.Close()
+		store, err := bolthold.Open(path.Join(dbopts.dbPath, dbFilename), 0644, kn.boltOpts)
 		if err != nil {
 			return nil, err
 		}
 		dbName := strings.TrimSuffix(dbFilename, dbSuffix)
-		log.Debugf("opened db: %s file: %s", dbName, dbFilename)
+		log.Debugf("opened db: %s file: %s ro: %v", dbName, dbFilename, kn.boltOpts.ReadOnly)
 		kn.db[dbName] = store
 	}
 	return &kn, nil
@@ -73,6 +85,16 @@ func (kn *Knowledge) Close() {
 	for _, dbName := range kn.db {
 		dbName.Close()
 	}
+}
+
+// check if db is read only
+func (kn *Knowledge) IsReadOnly() bool {
+	return kn.boltOpts.ReadOnly
+}
+
+// get the db path
+func (kn *Knowledge) Path() string {
+	return kn.dbPath
 }
 
 func (kn *Knowledge) CreateIndex() (err error) {
