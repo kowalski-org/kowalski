@@ -1,5 +1,10 @@
 # Kowalski
-Kowalski is an AI which helps to configure your system
+Kowalski is an AI which helps to configure your system. It's basic idea is
+store the openSUSE documentation in a vector datbase and if the user has
+a request to `kowalksi`, the relevant documents are retreived from the database
+and presented to an LLM which is running on ollama as context.
+If files are mentioned in the documentation these files are also presented to the LLM.
+In opposited to MCP this is a single shot approach, as the LLM know so immediatelty of how to start.
 
 # Installation
 
@@ -37,7 +42,7 @@ Now you have to start the ollama service with
 and in another terminal pull the needed models with
 ```
   ollama pull gemma3:4b
-  ollama pull nomic-embed-text
+  ollama pull nomic-embed-text:v1.5
 ```
 After this you need to create a knowledge database, for this clone the suse docs with
 ```
@@ -45,7 +50,7 @@ After this you need to create a knowledge database, for this clone the suse docs
 ```
 and initialize it with
 ```
-  find PATHTOSUSEDOCS -name \*xml -type f  | xargs go run main.go database add susedoc
+  find PATHTOSUSEDOCS -name \*xml -type f  | xargs go run main.go --database ./kwDB database add susedoc@nomic-embed-text:v1.5
 ```
 Finally you can open the chat with
 ```
