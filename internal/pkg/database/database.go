@@ -63,7 +63,7 @@ func New(args ...KnowledgeArgs) (*Knowledge, error) {
 	kn.boltOpts.Options = new(bbolt.Options)
 	for _, dbFilename := range dbBackends {
 		// try to openDB in writeable mode, if it fails open read-only
-		fileTest, err := os.OpenFile(dbFilename, os.O_WRONLY, 0666)
+		fileTest, err := os.OpenFile(path.Join(dbopts.dbPath, dbFilename), os.O_WRONLY, 0666)
 		if err != nil {
 			if os.IsPermission(err) {
 				kn.boltOpts.ReadOnly = true
